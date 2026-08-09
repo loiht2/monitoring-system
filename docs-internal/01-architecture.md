@@ -112,6 +112,8 @@ exists to find, and what nothing else in the system can express.
 |---|---|---|
 | `gpu_uuid` | DCGM ↔ NVML ↔ `gpu_alloc` ↔ `hami_*` | Physical device |
 | `mig_uuid` | DCGM `GPU_I` ↔ `gpu_alloc` | MIG instances |
+
+The `gpu` label is the board index and is **not** unique: a MIG instance carries its parent board's index. Aggregate on `gpu_uuid`, never on `gpu`.
 | `namespace`, `pod` | NVML ↔ eBPF ↔ `hami_*` ↔ pod-metadata metrics | Workload |
 
 ### 3.2 Normalization — add, never rename
@@ -158,6 +160,12 @@ so entitlement *is* attribution and the result is exact:
 DCGM_FI_PROF_SM_ACTIVE
   * on(mig_uuid) group_left(namespace, pod) gpu_alloc_device_pod_info{mig_uuid!=""}
 ```
+
+> **Not yet available.** Nothing populates `mig_uuid` today: entitlement is read from HAMi
+> annotations and DRA `ResourceSlice` attributes, both of which carry the *physical* GPU UUID.
+> Resolving a MIG instance UUID from those objects is unimplemented, so this query returns an
+> empty vector. Per-pod memory on MIG still works through `nvml_process_gpu_memory_bytes`,
+> which is read from the instance handle.
 
 Because the authoritative source differs by device mode, a dashboard panel expresses this as a fallback chain,
 not one expression.

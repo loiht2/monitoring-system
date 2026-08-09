@@ -159,6 +159,7 @@ The reason this exporter exists: the two catalog rows with **no DCGM equivalent 
 | Catalog | Metric | Meaning | MIG |
 |---|---|---|---|
 | 2 | `nvml_process_sm_utilization_ratio` | Fraction of SM capacity consumed by **this pod's** processes. On a shared device this is what separates a saturated tenant from an idle one | **N/A** |
+| 2 | `nvml_process_memory_utilization_ratio` | Fraction of the period **this pod's** processes were reading or writing device memory. Distinguishes a bandwidth-bound tenant from a compute-bound one on the same card | **N/A** |
 | 22 / MIG 17 | `nvml_process_gpu_memory_bytes` | Device memory held by this pod's processes. The only per-process metric that survives MIG | available |
 
 Summed per pod; host PID never becomes a label ([01 § 2.1](01-architecture.md)).
