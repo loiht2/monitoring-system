@@ -19,6 +19,23 @@ import (
 // this is the literal key observed on the DRA driver this platform runs.
 const uuidAttribute = "uuid"
 
+// typeAttribute and parentUUIDAttribute are the NVIDIA DRA driver
+// (gpu.nvidia.com) keys that distinguish a MIG slice device from a plain GPU
+// device and carry its parent physical GPU's UUID. Confirmed against the
+// k8s-dra-driver-gpu ResourceSlice attribute reference (device type "mig";
+// MIG disabled on this platform's hardware today, so unverified live).
+const typeAttribute = "type"
+const parentUUIDAttribute = "parentUUID"
+const migTypeValue = "mig"
+
+// deviceUUIDs is one ResourceSlice device's resolved identity: a plain GPU
+// device carries only GPUUUID; a MIG slice carries both, GPUUUID being its
+// parent physical GPU so existing on(gpu_uuid) joins keep working.
+type deviceUUIDs struct {
+	GPUUUID string
+	MIGUUID string
+}
+
 // k8sAllocSource implements collector.AllocSource against the live cluster.
 type k8sAllocSource struct {
 	client kubernetes.Interface
@@ -43,7 +60,7 @@ func (s k8sAllocSource) Entitlements() []collector.Entitlement {
 	}
 
 	var out []collector.Entitlement
-	var sliceUUIDs map[string]string // lazily built only if a pod needs DRA resolution
+	var sliceUUIDs map[string]deviceUUIDs // lazily built only if a pod needs DRA resolution
 
 	for i := range pods.Items {
 		pod := &pods.Items[i]
@@ -79,12 +96,13 @@ func (s k8sAllocSource) Entitlements() []collector.Entitlement {
 		for _, ref := range pod.Spec.ResourceClaims {
 			results := s.claimResults(ctx, pod, ref)
 			for _, name := range alloc.DevicesFromClaim(results) {
-				uuid, ok := sliceUUIDs[name]
+				ids, ok := sliceUUIDs[name]
 				if !ok {
 					continue
 				}
 				out = append(out, collector.Entitlement{
-					GPUUUID:   uuid,
+					GPUUUID:   ids.GPUUUID,
+					MIGUUID:   ids.MIGUUID,
 					Namespace: pod.Namespace,
 					Pod:       pod.Name,
 					Container: container,
@@ -96,11 +114,13 @@ func (s k8sAllocSource) Entitlements() []collector.Entitlement {
 	return out
 }
 
-// resourceSliceUUIDs builds a device-name -> GPU-UUID map from this node's
+// resourceSliceUUIDs builds a device-name -> deviceUUIDs map from this node's
 // ResourceSlices. Logs and returns an empty map on any failure; never errors
-// out to the caller.
-func (s k8sAllocSource) resourceSliceUUIDs(ctx context.Context) map[string]string {
-	out := make(map[string]string)
+// out to the caller. A device whose type is unrecognized, or a MIG device
+// missing its parent GPU UUID, is skipped at Debug rather than failing the
+// whole scrape — a pending or malformed device is normal, not a fault.
+func (s k8sAllocSource) resourceSliceUUIDs(ctx context.Context) map[string]deviceUUIDs {
+	out := make(map[string]deviceUUIDs)
 
 	slices, err := s.client.ResourceV1().ResourceSlices().List(ctx, metav1.ListOptions{})
 	if err != nil {
@@ -118,7 +138,25 @@ func (s k8sAllocSource) resourceSliceUUIDs(ctx context.Context) map[string]strin
 			if !ok || attr.StringValue == nil {
 				continue
 			}
-			out[device.Name] = *attr.StringValue
+			uuid := *attr.StringValue
+
+			isMIG := false
+			if typeAttr, ok := device.Attributes[resourcev1.QualifiedName(typeAttribute)]; ok && typeAttr.StringValue != nil {
+				isMIG = *typeAttr.StringValue == migTypeValue
+			}
+
+			if !isMIG {
+				out[device.Name] = deviceUUIDs{GPUUUID: uuid}
+				continue
+			}
+
+			parentAttr, ok := device.Attributes[resourcev1.QualifiedName(parentUUIDAttribute)]
+			if !ok || parentAttr.StringValue == nil {
+				slog.Debug("k8ssource: mig device missing parentUUID attribute, skipping",
+					"node", s.node, "device", device.Name)
+				continue
+			}
+			out[device.Name] = deviceUUIDs{GPUUUID: *parentAttr.StringValue, MIGUUID: uuid}
 		}
 	}
 	return out

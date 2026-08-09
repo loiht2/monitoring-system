@@ -20,11 +20,12 @@ DCGM_FI_PROF_SM_ACTIVE
   * on(mig_uuid) group_left(namespace, pod) gpu_alloc_device_pod_info{mig_uuid!=""}
 ```
 
-> **Not yet available.** Nothing populates `mig_uuid` today: entitlement is read from HAMi
-> annotations and DRA `ResourceSlice` attributes, both of which carry the *physical* GPU UUID.
-> Resolving a MIG instance UUID from those objects is unimplemented, so this query returns an
-> empty vector. Per-pod memory on MIG still works through `nvml_process_gpu_memory_bytes`,
-> which is read from the instance handle.
+> **Implemented, not yet validated on hardware.** `mig_uuid` is resolved from the NVIDIA DRA driver's
+> ResourceSlice: a device whose `type` is `mig` carries the instance UUID in `uuid` and its physical
+> card in `parentUUID`, so a MIG entitlement populates both labels. The schema comes from the driver's
+> published reference, not from a live probe — MIG is disabled on the validation hardware. The parser
+> skips and logs any device that does not match, so a schema drift degrades to no MIG series rather
+> than to wrong ones.
 
 Because the source differs by GPU mode, a dashboard panel covering both must combine the two rather than pick
 one.
