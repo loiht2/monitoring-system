@@ -1,0 +1,20 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../ml-platform"
+		},
+		{
+			"path": "../metrics"
+		},
+		{
+			"path": "../../test/deep-learning-workloads"
+		},
+		{
+			"path": "../../projects/HAMi"
+		}
+	],
+	"settings": {}
+}

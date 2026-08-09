@@ -1,0 +1,21 @@
+# Site-specific operational notes — live cluster addresses, device UUIDs,
+# release names, node inventory. Never committed: the spec proper is written
+# to be hardware- and site-agnostic (see README.md § Scope of these documents).
+NOTE-a30-node.md
+NOTE-*.md
+
+# Local build/dev artifacts
+__pycache__/
+*.pyc
+.venv/
+venv/
+node_modules/
+dist/
+build/
+*.egg-info/
+
+# Local cluster state / snapshots
+kubeconfig
+*.kubeconfig
+snapshots/
+.worktrees/
