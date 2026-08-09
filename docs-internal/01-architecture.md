@@ -166,8 +166,15 @@ not one expression.
 
 ```promql
 gpu_alloc_device_pod_info
-  unless on(namespace, pod) (sum by (namespace, pod) (nvml_process_gpu_memory_bytes) > 0)
+  unless on(gpu_uuid, namespace, pod) (
+    sum by (gpu_uuid, namespace, pod) (nvml_process_gpu_memory_bytes) > 0
+  )
 ```
+
+**`gpu_uuid` must be in the match, not just `namespace` and `pod`.** Matching on the pod alone collapses its
+GPUs together, so a pod holding two cards and using one suppresses *both* entitlement rows and the idle card
+becomes invisible — the exact case this query exists to catch. Both sides carry `gpu_uuid` per device, so the
+three-label match is what makes partially-idle multi-GPU pods visible.
 
 **Co-tenancy:**
 

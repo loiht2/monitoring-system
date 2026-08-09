@@ -42,8 +42,13 @@ Allocation and use are different facts. A pod can hold a GPU with no CUDA contex
 
 ```promql
 gpu_alloc_device_pod_info
-  unless on(namespace, pod) (sum by (namespace, pod) (nvml_process_gpu_memory_bytes) > 0)
+  unless on(gpu_uuid, namespace, pod) (
+    sum by (gpu_uuid, namespace, pod) (nvml_process_gpu_memory_bytes) > 0
+  )
 ```
+
+The match includes `gpu_uuid` deliberately. Matching on the pod alone would collapse its GPUs together, so a
+pod holding two cards and using only one would suppress both rows and hide the idle card.
 
 For "allocated, has memory, but doing no work", cross-check the kernel launch rate:
 
@@ -52,6 +57,13 @@ gpu_alloc_device_pod_info
   unless on(namespace, pod) (
     sum by (namespace, pod) (rate(ebpf_cuda_kernel_launch_calls_total[10m])) > 0
   )
+```
+
+Note this one CANNOT be narrowed to `gpu_uuid`: the eBPF exporter traces CUDA calls per pod and does not know
+which physical GPU a call targeted. So it answers "is this pod doing any GPU work at all", not "is this
+particular card idle". Use the memory-based query above when the pod may hold several GPUs.
+
+```promql
 ```
 
 Three independent idle signals exist — absent NVML process metrics, a flat kernel launch rate, and HAMi's
