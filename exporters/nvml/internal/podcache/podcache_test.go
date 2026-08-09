@@ -1,12 +1,16 @@
 package podcache
 
 import (
+	"context"
+	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes/fake"
 	k8scache "k8s.io/client-go/tools/cache"
 )
 
@@ -74,6 +78,54 @@ func TestDeleteHandlesTombstoneFromMissedWatchEvent(t *testing.T) {
 	c.handleDelete(k8scache.DeletedFinalStateUnknown{Key: "team-x/trainer-0", Obj: p})
 	if ns, _, _ := c.Lookup("aaaa-bbbb", ""); ns != "" {
 		t.Fatalf("tombstone ignored, entry leaked: %q", ns)
+	}
+}
+
+func TestSyncedIsFalseBeforeTheInitialListCompletes(t *testing.T) {
+	// Until the initial list lands, Lookup misses for every PID indistinguishably
+	// from a genuinely unattributable process, so per-pod metrics would carry
+	// blank attribution — /readyz must hold traffic off until Synced() is true.
+	c := New()
+	if c.Synced() {
+		t.Fatal("freshly constructed Cache reports Synced() == true")
+	}
+}
+
+func TestSyncedBecomesTrueAfterTheInformerSyncs(t *testing.T) {
+	client := fake.NewSimpleClientset(testPod())
+	c := New()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go c.Run(ctx, client, "node-1")
+
+	deadline := time.After(2 * time.Second)
+	for {
+		if c.Synced() {
+			return
+		}
+		select {
+		case <-deadline:
+			t.Fatal("cache never reported Synced() == true within 2s")
+		case <-time.After(time.Millisecond):
+		}
+	}
+}
+
+func TestAllSyncedIsFalseWhenAnyInformerFailed(t *testing.T) {
+	if !allSynced(map[reflect.Type]bool{}) {
+		// An empty map means no informer was waited on at all, which is not
+		// the same as one having failed to sync — there is nothing to be
+		// false about, so vacuously true is the correct answer here. Run's
+		// only caller passes WaitForCacheSync's own result, which is never
+		// empty for a factory with at least one informer registered.
+		t.Fatal("allSynced(empty map) = false; want true (vacuous case)")
+	}
+	if !allSynced(map[reflect.Type]bool{reflect.TypeOf(0): true}) {
+		t.Fatal("allSynced(all true) = false; want true")
+	}
+	if allSynced(map[reflect.Type]bool{reflect.TypeOf(0): true, reflect.TypeOf(""): false}) {
+		t.Fatal("allSynced(one false) = true; want false")
 	}
 }
 

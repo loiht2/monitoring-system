@@ -6,8 +6,10 @@ package podcache
 
 import (
 	"context"
+	"reflect"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -25,6 +27,7 @@ type Cache struct {
 	mu         sync.RWMutex
 	byUID      map[string]identity
 	containers map[string]string // podUID + "/" + containerID -> container name
+	synced     atomic.Bool
 }
 
 func New() *Cache {
@@ -99,9 +102,26 @@ func (c *Cache) Run(ctx context.Context, client kubernetes.Interface, nodeName s
 		return err
 	}
 	factory.Start(ctx.Done())
-	factory.WaitForCacheSync(ctx.Done())
+	if synced := factory.WaitForCacheSync(ctx.Done()); allSynced(synced) {
+		c.synced.Store(true)
+	}
 	<-ctx.Done()
 	return nil
+}
+
+// Synced reports whether the initial pod list has completed. Before this,
+// Lookup returns empty for every PID indistinguishably from a genuinely
+// unattributable process, so callers gate per-process attribution on it
+// (e.g. a /readyz endpoint) rather than trusting Lookup blindly.
+func (c *Cache) Synced() bool { return c.synced.Load() }
+
+func allSynced(synced map[reflect.Type]bool) bool {
+	for _, ok := range synced {
+		if !ok {
+			return false
+		}
+	}
+	return true
 }
 
 func (c *Cache) upsertAny(obj any) {
