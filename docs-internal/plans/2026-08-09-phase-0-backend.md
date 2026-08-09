@@ -264,16 +264,23 @@ kind: ClusterRole
 metadata:
   name: prometheus-gpu
 rules:
+  # Least privilege. Every target in this project is Service-based, so the
+  # endpoints and endpointslices discovery paths are all that is needed.
+  # Deliberately NOT granted: `nodes` / `nodes/metrics` (cluster-wide read of
+  # every kubelet's metrics) and `nonResourceURLs: /metrics` (the API server's
+  # own metrics). Those are kube-prometheus-stack boilerplate for node-role and
+  # apiserver scrape jobs, which no phase of this project defines. Add them back
+  # only when such a job is actually introduced.
   - apiGroups: [""]
-    resources: ["nodes", "nodes/metrics", "services", "endpoints", "pods"]
+    resources: ["services", "endpoints", "pods"]
     verbs: ["get", "list", "watch"]
   - apiGroups: ["discovery.k8s.io"]
     resources: ["endpointslices"]
     verbs: ["get", "list", "watch"]
+  # `get` only, and that is sufficient: any ConfigMap reference (a TLS CA
+  # bundle, say) is by exact name, never discovered by listing.
   - apiGroups: [""]
     resources: ["configmaps"]
-    verbs: ["get"]
-  - nonResourceURLs: ["/metrics"]
     verbs: ["get"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
