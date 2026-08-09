@@ -32,3 +32,19 @@ func TestRatioConvertsPercentAndReportsAbsence(t *testing.T) {
 		t.Fatal("Ratio(NotSupported) must report absence")
 	}
 }
+
+func TestBytesReportsAbsenceOnlyForNegativeValues(t *testing.T) {
+	// A positive reading is a real measurement.
+	if got, ok := Bytes(1024); !ok || got != 1024 {
+		t.Fatalf("Bytes(1024) = %v, %v; want 1024, true", got, ok)
+	}
+	// A REAL zero — a live process using no memory right now — is still a
+	// measurement and must be reported, exactly like Ratio(0). Conflating it
+	// with "unmeasured" would make a genuinely idle-but-attributed pod vanish.
+	if got, ok := Bytes(0); !ok || got != 0 {
+		t.Fatalf("Bytes(0) = %v, %v; want 0, true — zero is a measurement, not absence", got, ok)
+	}
+	if _, ok := Bytes(NotSupported); ok {
+		t.Fatal("Bytes(NotSupported) must report absence")
+	}
+}

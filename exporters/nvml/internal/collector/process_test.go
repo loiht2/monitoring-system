@@ -136,6 +136,34 @@ func TestEachSampleOwnsItsLabelMap(t *testing.T) {
 	}
 }
 
+func TestUnmeasuredMemoryIsOmittedNotZero(t *testing.T) {
+	// If an unmeasured memory reading exported as 0, a pod that is actively
+	// computing (SMUtil is real) but whose memory reading is unavailable would
+	// read as idle on `sum(nvml_process_gpu_memory_bytes) > 0` and be flagged
+	// for reclamation while it is still live.
+	dev := fakeProcDevice{uuid: "GPU-1", procs: []ProcSample{
+		{PID: 101, SMUtil: 30, MemoryBytes: NotSupported},
+	}}
+	rows := NewProcessCollector([]Device{dev}, resolver).Collect()
+	for _, r := range rows {
+		if r.Name == "nvml_process_gpu_memory_bytes" && r.Labels["pod"] == "pod-a" {
+			t.Fatalf("unmeasured memory was emitted as %v", r.Value)
+		}
+	}
+	find(t, rows, "nvml_process_sm_utilization_ratio", "pod-a")
+}
+
+func TestAMeasuredProcessStillSumsWithAnUnmeasuredOne(t *testing.T) {
+	dev := fakeProcDevice{uuid: "GPU-1", procs: []ProcSample{
+		{PID: 101, SMUtil: 30, MemoryBytes: 1024},
+		{PID: 102, SMUtil: 20, MemoryBytes: NotSupported},
+	}}
+	rows := NewProcessCollector([]Device{dev}, resolver).Collect()
+	if got := find(t, rows, "nvml_process_gpu_memory_bytes", "pod-a").Value; got != 1024 {
+		t.Fatalf("memory = %v; want exactly 1024 (the unmeasured process must not contribute)", got)
+	}
+}
+
 func TestPodWithNoLiveProcessProducesNoSeries(t *testing.T) {
 	// Dropped, not zeroed: the series set must track reality.
 	if rows := NewProcessCollector([]Device{fakeProcDevice{uuid: "GPU-1"}}, resolver).Collect(); len(rows) != 0 {

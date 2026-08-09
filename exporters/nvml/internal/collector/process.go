@@ -1,7 +1,8 @@
 package collector
 
 // ProcSample is one process's readings on one device. SMUtil and MemUtil are
-// percentages; NotSupported marks an absent reading.
+// percentages and MemoryBytes is a byte count; NotSupported marks an absent
+// reading for any of the three.
 type ProcSample struct {
 	PID         uint32
 	SMUtil      int
@@ -59,7 +60,9 @@ func (c *ProcessCollector) Collect() []Sample {
 				totals[key] = bucket
 			}
 
-			bucket["nvml_process_gpu_memory_bytes"] += proc.MemoryBytes
+			if v, ok := Bytes(proc.MemoryBytes); ok {
+				bucket["nvml_process_gpu_memory_bytes"] += v
+			}
 
 			if mig {
 				// Utilization sampling is unsupported on MIG devices. Absent,

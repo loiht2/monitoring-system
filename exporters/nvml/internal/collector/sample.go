@@ -30,3 +30,14 @@ func Ratio(percent int) (float64, bool) {
 	}
 	return float64(percent) / 100.0, true
 }
+
+// Bytes reports a byte count, or false when the reading is unavailable.
+// Mirrors Ratio: an unmeasurable byte count must be omitted, never
+// exported as 0 — a pod that is computing but whose memory reading is
+// missing would otherwise read as idle and be reclaimed.
+func Bytes(v float64) (float64, bool) {
+	if v < 0 {
+		return 0, false
+	}
+	return v, true
+}
