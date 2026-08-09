@@ -1,0 +1,126 @@
+package collector
+
+import (
+	"strings"
+	"testing"
+)
+
+type fakeStateDevice struct {
+	uuid  string
+	index int
+	state DeviceState
+}
+
+func (d fakeStateDevice) UUID() (string, bool) { return d.uuid, true }
+func (d fakeStateDevice) Index() int           { return d.index }
+func (d fakeStateDevice) State() DeviceState   { return d.state }
+
+func fullState() DeviceState {
+	return DeviceState{
+		GPUUtilPercent:   40,
+		MemoryUsedBytes:  2 << 30,
+		MemoryFreeBytes:  22 << 30,
+		MemoryTotalBytes: 24 << 30,
+		PowerMilliwatts:  120000,
+		TemperatureC:     55,
+		SMClockMHz:       1200,
+		MemClockMHz:      877,
+		EventReasons:     map[string]bool{"sw_power_cap": true, "hw_thermal_slowdown": false},
+	}
+}
+
+func namesOf(rows []Sample) map[string]bool {
+	out := map[string]bool{}
+	for _, r := range rows {
+		out[r.Name] = true
+	}
+	return out
+}
+
+func collectDevice(s DeviceState) []Sample {
+	return NewDeviceCollector([]StateDevice{fakeStateDevice{"GPU-1", 0, s}}, "node-a").Collect()
+}
+
+func TestEmitsExactlyTheNVMLOwnedRows(t *testing.T) {
+	want := map[string]bool{
+		"nvml_gpu_utilization_ratio":          true,
+		"nvml_gpu_memory_used_bytes":          true,
+		"nvml_gpu_memory_free_bytes":          true,
+		"nvml_gpu_memory_total_bytes":         true,
+		"nvml_gpu_power_watts":                true,
+		"nvml_gpu_temperature_celsius":        true,
+		"nvml_gpu_clock_hertz":                true,
+		"nvml_gpu_clocks_event_reason_active": true,
+	}
+	got := namesOf(collectDevice(fullState()))
+	for n := range want {
+		if !got[n] {
+			t.Errorf("missing %s", n)
+		}
+	}
+	for n := range got {
+		if !want[n] {
+			t.Errorf("unexpected metric %s", n)
+		}
+	}
+}
+
+func TestUnitsAreBaseUnits(t *testing.T) {
+	for _, r := range collectDevice(fullState()) {
+		switch {
+		case r.Name == "nvml_gpu_utilization_ratio" && r.Value != 0.4:
+			t.Errorf("utilization = %v; want 0.4", r.Value)
+		case r.Name == "nvml_gpu_power_watts" && r.Value != 120:
+			t.Errorf("power = %v W; want 120 (mW converted)", r.Value)
+		case r.Name == "nvml_gpu_clock_hertz" && r.Labels["clock"] == "sm" && r.Value != 1.2e9:
+			t.Errorf("sm clock = %v Hz; want 1.2e9 (MHz converted)", r.Value)
+		}
+	}
+}
+
+func TestBothClockDomainsAreEmitted(t *testing.T) {
+	// The exact-name set check cannot see a missing LABEL VALUE. Dropping the
+	// mem clock entirely leaves nvml_gpu_clock_hertz present via sm, so every
+	// other test here still passes.
+	seen := map[string]float64{}
+	for _, r := range collectDevice(fullState()) {
+		if r.Name == "nvml_gpu_clock_hertz" {
+			seen[r.Labels["clock"]] = r.Value
+		}
+	}
+	if seen["sm"] != 1.2e9 || seen["mem"] != 877e6 {
+		t.Fatalf("both clock domains must be emitted with converted units, got %v", seen)
+	}
+}
+
+func TestUnsupportedFieldIsAbsentNeverZero(t *testing.T) {
+	s := fullState()
+	s.PowerMilliwatts = NotSupported
+	if namesOf(collectDevice(s))["nvml_gpu_power_watts"] {
+		t.Fatal("unsupported power was emitted")
+	}
+}
+
+func TestOneSeriesPerSupportedEventReason(t *testing.T) {
+	seen := map[string]bool{}
+	for _, r := range collectDevice(fullState()) {
+		if r.Name == "nvml_gpu_clocks_event_reason_active" {
+			seen[r.Labels["reason"]] = true
+		}
+	}
+	if !seen["sw_power_cap"] || !seen["hw_thermal_slowdown"] {
+		t.Fatalf("reasons = %v", seen)
+	}
+}
+
+func TestNoDCGMOwnedMetricIsEmitted(t *testing.T) {
+	// PCIe, NVLink, C2C and every profiling-derived ratio belong to DCGM
+	// (docs-internal/00 § 3). Emitting one would create a second source.
+	for name := range namesOf(collectDevice(fullState())) {
+		for _, forbidden := range []string{"pcie", "nvlink", "c2c", "sm_active", "occupancy", "tensor", "dram"} {
+			if strings.Contains(name, forbidden) {
+				t.Fatalf("%s crosses the DCGM boundary", name)
+			}
+		}
+	}
+}
