@@ -3,6 +3,7 @@ module github.com/loiht2/monitoring-system/exporters/nvml
 go 1.26.0
 
 require (
+	github.com/NVIDIA/go-nvml v0.13.3-1
 	github.com/prometheus/client_golang v1.24.1
 	k8s.io/api v0.35.3
 	k8s.io/apimachinery v0.35.3
