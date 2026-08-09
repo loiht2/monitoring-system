@@ -42,4 +42,6 @@ implementation detail, validation plan and risk register. Read it to change the 
 
 ## Status
 
-**Design complete. No code written.**
+**NVML exporter built; not yet deployed.** The Go exporter (`exporters/nvml/`) is complete
+and unit-tested against fakes — no GPU or cluster needed to run its suite. It has not yet run on real
+hardware. MIG entitlement (`mig_uuid`) is not implemented. The DCGM and eBPF exporters are still design only.
