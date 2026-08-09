@@ -117,11 +117,18 @@ PF_PID=$!
 trap 'kill "$PF_PID" 2>/dev/null || true' EXIT
 
 for _ in $(seq 1 30); do
+  # Fail fast rather than polling a dead forward for 15s and then crashing
+  # confusingly downstream.
+  kill -0 "$PF_PID" 2>/dev/null || { echo "port-forward to svc/prometheus-operated in ns $NS failed" >&2; exit 1; }
   curl -sf "http://127.0.0.1:${PORT}/-/ready" >/dev/null 2>&1 && break
   sleep 0.5
 done
 
-curl -sfG "http://127.0.0.1:${PORT}/api/v1/query" --data-urlencode "query=${QUERY}" \
+# NOT -f on this one. curl -f suppresses the response body on any non-2xx, and
+# a bad query or an unready Prometheus returns its explanation IN the body —
+# which is exactly what _promq_fmt.py's "status != success" branch prints.
+# With -f the formatter gets zero bytes and dies with a JSONDecodeError instead.
+curl -sG "http://127.0.0.1:${PORT}/api/v1/query" --data-urlencode "query=${QUERY}" \
   | python3 "$(cd "$(dirname "$0")" && pwd)/_promq_fmt.py"
 ```
 
@@ -171,8 +178,22 @@ echo "sampling for ${WINDOW}s ..." >&2
 sleep "$WINDOW"
 
 : > "$OUT"
-for field in $("$HERE/promq.sh" 'group by (__name__) ({__name__=~"DCGM_FI_PROF_.*"})' \
-                 | sed 's/{.*//' | tr -d ' ' | grep . | sort); do
+# promq.sh prints "<value>  <name>{labels}", so the NAME is field 2. Do not
+# strip all spaces: that glues the value onto the name and every query built
+# from it becomes invalid PromQL.
+# Two steps on purpose. promq.sh failing must still abort loudly, but grep
+# matching nothing must NOT: under `set -e` with pipefail, grep's exit 1 makes
+# the whole assignment fail and the script dies BEFORE the guard below can
+# report why. `|| true` on the second assignment only is what keeps both.
+RAW=$("$HERE/promq.sh" 'group by (__name__) ({__name__=~"DCGM_FI_PROF_.*"})')
+FIELDS=$(printf '%s\n' "$RAW" \
+           | awk '{print $2}' | sed 's/{.*//' | grep -E '^DCGM_FI_PROF_' | sort || true)
+if [ -z "$FIELDS" ]; then
+  echo "no DCGM_FI_PROF_* metrics found — is the exporter scraped?" >&2
+  exit 1
+fi
+
+for field in $FIELDS; do
   "$HERE/promq.sh" "avg_over_time(${field}[${WINDOW}s])" \
     | sed "s/^/${field} /" >> "$OUT"
 done
