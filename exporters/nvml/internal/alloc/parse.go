@@ -31,7 +31,9 @@ type ClaimResult struct {
 // annotation, in order, or nil.
 //
 // A pod granted two GPUs carries both in one annotation, ";"-separated:
-//   GPU-<uuid1>,NVIDIA,4096,50:;GPU-<uuid2>,NVIDIA,4096,50:;
+//
+//	GPU-<uuid1>,NVIDIA,4096,50:;GPU-<uuid2>,NVIDIA,4096,50:;
+//
 // Returning only the first would leave the second GPU with no entitlement
 // series at all — precisely the granted-but-idle case this exporter exists to
 // surface.
