@@ -1,10 +1,10 @@
 {
   "uid": "gpu-hardware",
-  "title": "GPU Hardware (DCGM)",
-  "description": "Hardware counters, one panel per metric. Device-level: says what the silicon did, not who caused it.",
+  "title": "GPU Hardware",
+  "description": "What the silicon is doing, who holds it, and whether it is healthy — merging DCGM, NVML and allocation into one view that never says which exporter a number came from. MIG-partitioned cards report both a whole-device and a per-instance reading for memory; panels that compare across GPUs use the whole-device reading only (mig_uuid=\"\") to avoid double-counting a partitioned card, with the instance-scoped reading broken out in its own panel in the Memory row.",
   "tags": [
     "gpu",
-    "dcgm"
+    "hardware"
   ],
   "timezone": "browser",
   "schemaVersion": 39,
@@ -13,17 +13,58 @@
     "from": "now-1h",
     "to": "now"
   },
+  "templating": {
+    "list": [
+      {
+        "name": "gpu",
+        "label": "GPU",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "gpu-prometheus"
+        },
+        "query": "label_values(gpu_uuid)",
+        "refresh": 2,
+        "sort": 1,
+        "includeAll": true,
+        "multi": true,
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "hide": 0
+      }
+    ]
+  },
   "panels": [
     {
       "id": 1,
-      "type": "timeseries",
-      "title": "DCGM_FI_DEV_CORRECTABLE_REMAPPED_ROWS",
-      "description": "DCGM hardware counter.",
+      "type": "row",
+      "title": "Overview",
+      "collapsed": false,
       "gridPos": {
-        "h": 7,
-        "w": 12,
+        "h": 1,
+        "w": 24,
         "x": 0,
         "y": 0
+      },
+      "panels": []
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "GPUs Online",
+      "description": "Physical GPUs currently reporting telemetry, counted once each even if a card is split by MIG (an instance is not a separate physical GPU). Driven by a device-level NVML reading, so a card only disappears from this count if its exporter stops reporting entirely.",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 1
       },
       "datasource": {
         "type": "prometheus",
@@ -32,370 +73,49 @@
       "fieldConfig": {
         "defaults": {
           "unit": "short",
-          "custom": {
-            "fillOpacity": 8
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
           }
         },
         "overrides": []
       },
-      "targets": [
-        {
-          "expr": "DCGM_FI_DEV_CORRECTABLE_REMAPPED_ROWS",
-          "legendFormat": "{{gpu_uuid}}"
-        }
-      ]
-    },
-    {
-      "id": 2,
-      "type": "timeseries",
-      "title": "DCGM_FI_DEV_DEC_UTIL",
-      "description": "DCGM hardware counter.",
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 12,
-        "y": 0
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "gpu-prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percentunit",
-          "custom": {
-            "fillOpacity": 8
-          }
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
         },
-        "overrides": []
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto"
       },
       "targets": [
         {
-          "expr": "DCGM_FI_DEV_DEC_UTIL",
-          "legendFormat": "{{gpu_uuid}}"
+          "expr": "count(count by (gpu_uuid) (nvml_gpu_temperature_celsius))",
+          "instant": true
         }
       ]
     },
     {
       "id": 3,
-      "type": "timeseries",
-      "title": "DCGM_FI_DEV_ENC_UTIL",
-      "description": "DCGM hardware counter.",
+      "type": "stat",
+      "title": "Pods Holding a GPU",
+      "description": "Distinct pods with an active entitlement to a device or MIG instance right now (gpu_alloc_device_pod_info), whether or not they are actually computing. Empty means no pod currently holds a GPU on this node — check the Allocation & Support row for the raw entitlement rows before assuming this panel is broken.",
       "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 0,
-        "y": 7
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "gpu-prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percentunit",
-          "custom": {
-            "fillOpacity": 8
-          }
-        },
-        "overrides": []
-      },
-      "targets": [
-        {
-          "expr": "DCGM_FI_DEV_ENC_UTIL",
-          "legendFormat": "{{gpu_uuid}}"
-        }
-      ]
-    },
-    {
-      "id": 4,
-      "type": "timeseries",
-      "title": "DCGM_FI_DEV_FB_FREE",
-      "description": "DCGM hardware counter.",
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 12,
-        "y": 7
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "gpu-prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "deckbytes",
-          "custom": {
-            "fillOpacity": 8
-          }
-        },
-        "overrides": []
-      },
-      "targets": [
-        {
-          "expr": "DCGM_FI_DEV_FB_FREE",
-          "legendFormat": "{{gpu_uuid}}"
-        }
-      ]
-    },
-    {
-      "id": 5,
-      "type": "timeseries",
-      "title": "DCGM_FI_DEV_FB_RESERVED",
-      "description": "DCGM hardware counter.",
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 0,
-        "y": 14
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "gpu-prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "deckbytes",
-          "custom": {
-            "fillOpacity": 8
-          }
-        },
-        "overrides": []
-      },
-      "targets": [
-        {
-          "expr": "DCGM_FI_DEV_FB_RESERVED",
-          "legendFormat": "{{gpu_uuid}}"
-        }
-      ]
-    },
-    {
-      "id": 6,
-      "type": "timeseries",
-      "title": "DCGM_FI_DEV_FB_TOTAL",
-      "description": "DCGM hardware counter.",
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 12,
-        "y": 14
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "gpu-prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "deckbytes",
-          "custom": {
-            "fillOpacity": 8
-          }
-        },
-        "overrides": []
-      },
-      "targets": [
-        {
-          "expr": "DCGM_FI_DEV_FB_TOTAL",
-          "legendFormat": "{{gpu_uuid}}"
-        }
-      ]
-    },
-    {
-      "id": 7,
-      "type": "timeseries",
-      "title": "DCGM_FI_DEV_FB_USED",
-      "description": "DCGM hardware counter.",
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 0,
-        "y": 21
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "gpu-prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "deckbytes",
-          "custom": {
-            "fillOpacity": 8
-          }
-        },
-        "overrides": []
-      },
-      "targets": [
-        {
-          "expr": "DCGM_FI_DEV_FB_USED",
-          "legendFormat": "{{gpu_uuid}}"
-        }
-      ]
-    },
-    {
-      "id": 8,
-      "type": "timeseries",
-      "title": "DCGM_FI_DEV_GPU_TEMP",
-      "description": "DCGM hardware counter.",
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 12,
-        "y": 21
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "gpu-prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "celsius",
-          "custom": {
-            "fillOpacity": 8
-          }
-        },
-        "overrides": []
-      },
-      "targets": [
-        {
-          "expr": "DCGM_FI_DEV_GPU_TEMP",
-          "legendFormat": "{{gpu_uuid}}"
-        }
-      ]
-    },
-    {
-      "id": 9,
-      "type": "timeseries",
-      "title": "DCGM_FI_DEV_GPU_UTIL",
-      "description": "DCGM hardware counter.",
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 0,
-        "y": 28
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "gpu-prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percentunit",
-          "custom": {
-            "fillOpacity": 8
-          }
-        },
-        "overrides": []
-      },
-      "targets": [
-        {
-          "expr": "DCGM_FI_DEV_GPU_UTIL",
-          "legendFormat": "{{gpu_uuid}}"
-        }
-      ]
-    },
-    {
-      "id": 10,
-      "type": "timeseries",
-      "title": "DCGM_FI_DEV_MEMORY_TEMP",
-      "description": "DCGM hardware counter.",
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 12,
-        "y": 28
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "gpu-prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "celsius",
-          "custom": {
-            "fillOpacity": 8
-          }
-        },
-        "overrides": []
-      },
-      "targets": [
-        {
-          "expr": "DCGM_FI_DEV_MEMORY_TEMP",
-          "legendFormat": "{{gpu_uuid}}"
-        }
-      ]
-    },
-    {
-      "id": 11,
-      "type": "timeseries",
-      "title": "DCGM_FI_DEV_MEM_CLOCK",
-      "description": "DCGM hardware counter.",
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 0,
-        "y": 35
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "gpu-prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "rothz",
-          "custom": {
-            "fillOpacity": 8
-          }
-        },
-        "overrides": []
-      },
-      "targets": [
-        {
-          "expr": "DCGM_FI_DEV_MEM_CLOCK",
-          "legendFormat": "{{gpu_uuid}}"
-        }
-      ]
-    },
-    {
-      "id": 12,
-      "type": "timeseries",
-      "title": "DCGM_FI_DEV_MEM_COPY_UTIL",
-      "description": "DCGM hardware counter.",
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 12,
-        "y": 35
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "gpu-prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percentunit",
-          "custom": {
-            "fillOpacity": 8
-          }
-        },
-        "overrides": []
-      },
-      "targets": [
-        {
-          "expr": "DCGM_FI_DEV_MEM_COPY_UTIL",
-          "legendFormat": "{{gpu_uuid}}"
-        }
-      ]
-    },
-    {
-      "id": 13,
-      "type": "timeseries",
-      "title": "DCGM_FI_DEV_PCIE_REPLAY_COUNTER",
-      "description": "DCGM hardware counter.",
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 0,
-        "y": 42
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 1
       },
       "datasource": {
         "type": "prometheus",
@@ -404,29 +124,49 @@
       "fieldConfig": {
         "defaults": {
           "unit": "short",
-          "custom": {
-            "fillOpacity": 8
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
           }
         },
         "overrides": []
       },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      },
       "targets": [
         {
-          "expr": "DCGM_FI_DEV_PCIE_REPLAY_COUNTER",
-          "legendFormat": "{{gpu_uuid}}"
+          "expr": "count(count by (namespace, pod) (gpu_alloc_device_pod_info))",
+          "instant": true
         }
       ]
     },
     {
-      "id": 14,
-      "type": "timeseries",
-      "title": "DCGM_FI_DEV_POWER_USAGE",
-      "description": "DCGM hardware counter.",
+      "id": 4,
+      "type": "stat",
+      "title": "Total Power Draw",
+      "description": "Combined instantaneous board power across every GPU on the node. NVML is the designated source for this reading; DCGM also collects a legacy power field but nothing on this dashboard is built on it.",
       "gridPos": {
-        "h": 7,
-        "w": 12,
+        "h": 4,
+        "w": 6,
         "x": 12,
-        "y": 42
+        "y": 1
       },
       "datasource": {
         "type": "prometheus",
@@ -435,543 +175,1004 @@
       "fieldConfig": {
         "defaults": {
           "unit": "watt",
-          "custom": {
-            "fillOpacity": 8
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
           }
         },
         "overrides": []
       },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      },
       "targets": [
         {
-          "expr": "DCGM_FI_DEV_POWER_USAGE",
-          "legendFormat": "{{gpu_uuid}}"
+          "expr": "sum(nvml_gpu_power_watts)",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Hottest Card",
+      "description": "The single highest core temperature across all GPUs at this instant. See Power & Thermals for the per-card breakdown of which one this is.",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 1
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 75
+              },
+              {
+                "color": "red",
+                "value": 85
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      },
+      "targets": [
+        {
+          "expr": "max(nvml_gpu_temperature_celsius)",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "row",
+      "title": "Utilization",
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 5
+      },
+      "panels": [
+        {
+          "id": 6,
+          "type": "gauge",
+          "title": "GPU Busy — Current",
+          "description": "Fraction of the last sampling period one or more kernels were executing on the whole device (NVML, the catalog's designated source for device busy — nothing new is built on DCGM's equivalent field here). Reads as no data for a GPU that has any MIG instance carved out of it: the whole-device reading becomes undefined once the card is partitioned. See Graphics/Compute Engine Active for a measure that keeps working under MIG. The colour bands here are an informational scale, not a warning — high busy is normal and desired.",
+          "gridPos": {
+            "h": 8,
+            "w": 6,
+            "x": 0,
+            "y": 0
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gpu-prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit",
+              "min": 0,
+              "max": 1,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 0.85
+                  },
+                  {
+                    "color": "red",
+                    "value": 0.95
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "orientation": "auto",
+            "showThresholdLabels": false,
+            "showThresholdMarkers": true
+          },
+          "targets": [
+            {
+              "expr": "nvml_gpu_utilization_ratio{gpu_uuid=~\"$gpu\"}",
+              "legendFormat": "{{node}} gpu{{gpu}}",
+              "instant": true
+            }
+          ]
+        },
+        {
+          "id": 7,
+          "type": "timeseries",
+          "title": "Engine & SM Activity",
+          "description": "Two engine-level activity ratios, both MIG-safe (unlike plain GPU busy, which disappears once a card is partitioned). Graphics/Compute Engine Active is the stricter of the two. SM Active is 0.5-ambiguous — that could mean half the SMs fully busy or all SMs half busy. On a MIG instance both ratios are relative to that instance's own SM count, never the whole card: a saturated 14-of-56-SM instance measured on this fleet read ~1.0 here while three quarters of the physical card sat idle — do not read a MIG line on this chart as ‘the card is this busy’.",
+          "gridPos": {
+            "h": 8,
+            "w": 9,
+            "x": 6,
+            "y": 0
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gpu-prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit",
+              "custom": {
+                "fillOpacity": 8
+              }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "expr": "DCGM_FI_PROF_GR_ENGINE_ACTIVE{gpu_uuid=~\"$gpu\"}",
+              "legendFormat": "{{node}} gpu{{gpu}} · graphics/compute engine"
+            },
+            {
+              "expr": "DCGM_FI_PROF_SM_ACTIVE{gpu_uuid=~\"$gpu\"}",
+              "legendFormat": "{{node}} gpu{{gpu}} · SM active"
+            }
+          ]
+        },
+        {
+          "id": 8,
+          "type": "timeseries",
+          "title": "SM Occupancy",
+          "description": "Resident warps against the hardware maximum. High occupancy does not imply useful work — a kernel can fill the SMs and still be memory-bound. Like the engine-activity panel, an instance's occupancy is relative to its own SM allocation under MIG, not the whole card.",
+          "gridPos": {
+            "h": 8,
+            "w": 9,
+            "x": 15,
+            "y": 0
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gpu-prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit",
+              "custom": {
+                "fillOpacity": 8
+              }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "expr": "DCGM_FI_PROF_SM_OCCUPANCY{gpu_uuid=~\"$gpu\"}",
+              "legendFormat": "{{node}} gpu{{gpu}}"
+            }
+          ]
+        },
+        {
+          "id": 9,
+          "type": "timeseries",
+          "title": "Tensor & Precision Pipe Activity",
+          "description": "Which arithmetic pipes the GPU is actually using: tensor cores overall, split into FP16/BF16 (HMMA) and INT8 (IMMA) matrix ops, plus the non-tensor FP64/FP32/FP16 pipes. High FP32 with low tensor activity during training usually means mixed precision is not engaged. These are DCGM's profiling counters — there is no NVML alternative below Hopper's GPM family, which this fleet does not have.",
+          "gridPos": {
+            "h": 9,
+            "w": 24,
+            "x": 0,
+            "y": 8
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gpu-prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit",
+              "custom": {
+                "fillOpacity": 8
+              }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "expr": "DCGM_FI_PROF_PIPE_TENSOR_ACTIVE{gpu_uuid=~\"$gpu\"}",
+              "legendFormat": "{{node}} gpu{{gpu}} · tensor (all)"
+            },
+            {
+              "expr": "DCGM_FI_PROF_PIPE_TENSOR_HMMA_ACTIVE{gpu_uuid=~\"$gpu\"}",
+              "legendFormat": "{{node}} gpu{{gpu}} · tensor FP16/BF16 (HMMA)"
+            },
+            {
+              "expr": "DCGM_FI_PROF_PIPE_TENSOR_IMMA_ACTIVE{gpu_uuid=~\"$gpu\"}",
+              "legendFormat": "{{node}} gpu{{gpu}} · tensor INT8 (IMMA)"
+            },
+            {
+              "expr": "DCGM_FI_PROF_PIPE_FP64_ACTIVE{gpu_uuid=~\"$gpu\"}",
+              "legendFormat": "{{node}} gpu{{gpu}} · FP64"
+            },
+            {
+              "expr": "DCGM_FI_PROF_PIPE_FP32_ACTIVE{gpu_uuid=~\"$gpu\"}",
+              "legendFormat": "{{node}} gpu{{gpu}} · FP32"
+            },
+            {
+              "expr": "DCGM_FI_PROF_PIPE_FP16_ACTIVE{gpu_uuid=~\"$gpu\"}",
+              "legendFormat": "{{node}} gpu{{gpu}} · FP16"
+            }
+          ]
         }
       ]
     },
     {
       "id": 15,
-      "type": "timeseries",
-      "title": "DCGM_FI_DEV_ROW_REMAP_FAILURE",
-      "description": "DCGM hardware counter.",
+      "type": "row",
+      "title": "Memory",
+      "collapsed": true,
       "gridPos": {
-        "h": 7,
-        "w": 12,
+        "h": 1,
+        "w": 24,
         "x": 0,
-        "y": 49
+        "y": 6
       },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "gpu-prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "custom": {
-            "fillOpacity": 8
-          }
-        },
-        "overrides": []
-      },
-      "targets": [
+      "panels": [
         {
-          "expr": "DCGM_FI_DEV_ROW_REMAP_FAILURE",
-          "legendFormat": "{{gpu_uuid}}"
-        }
-      ]
-    },
-    {
-      "id": 16,
-      "type": "timeseries",
-      "title": "DCGM_FI_DEV_SM_CLOCK",
-      "description": "DCGM hardware counter.",
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 12,
-        "y": 49
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "gpu-prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "rothz",
-          "custom": {
-            "fillOpacity": 8
-          }
+          "id": 11,
+          "type": "bargauge",
+          "title": "Memory Used vs Total, per GPU",
+          "description": "Fraction of each physical card's memory currently allocated (NVML, the catalog's designated source). Filtered to the whole-card reading only (mig_uuid=\"\") — NVML also emits a second, smaller reading scoped to a MIG instance under the SAME gpu_uuid, and adding the two together would count the same silicon's memory twice and produce a total larger than the card's real capacity. The instance-scoped reading is broken out on its own in the panel below.",
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 0,
+            "y": 0
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gpu-prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit",
+              "min": 0,
+              "max": 1,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 0.85
+                  },
+                  {
+                    "color": "red",
+                    "value": 0.95
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "orientation": "horizontal",
+            "displayMode": "gradient",
+            "showUnfilled": true
+          },
+          "targets": [
+            {
+              "expr": "nvml_gpu_memory_used_bytes{gpu_uuid=~\"$gpu\", mig_uuid=\"\"} / nvml_gpu_memory_total_bytes{gpu_uuid=~\"$gpu\", mig_uuid=\"\"}",
+              "legendFormat": "{{node}} gpu{{gpu}}",
+              "instant": true
+            }
+          ]
         },
-        "overrides": []
-      },
-      "targets": [
         {
-          "expr": "DCGM_FI_DEV_SM_CLOCK",
-          "legendFormat": "{{gpu_uuid}}"
-        }
-      ]
-    },
-    {
-      "id": 17,
-      "type": "timeseries",
-      "title": "DCGM_FI_DEV_TOTAL_ENERGY_CONSUMPTION",
-      "description": "DCGM hardware counter.",
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 0,
-        "y": 56
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "gpu-prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "custom": {
-            "fillOpacity": 8
-          }
+          "id": 12,
+          "type": "timeseries",
+          "title": "Memory Used Over Time",
+          "description": "Whole-card memory in use against installed capacity, trended. Same mig_uuid=\"\" filter as the panel to the left, for the same double-counting reason — see its description.",
+          "gridPos": {
+            "h": 8,
+            "w": 16,
+            "x": 8,
+            "y": 0
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gpu-prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes",
+              "custom": {
+                "fillOpacity": 8
+              }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "expr": "nvml_gpu_memory_used_bytes{gpu_uuid=~\"$gpu\", mig_uuid=\"\"}",
+              "legendFormat": "{{node}} gpu{{gpu}} · used"
+            },
+            {
+              "expr": "nvml_gpu_memory_total_bytes{gpu_uuid=~\"$gpu\", mig_uuid=\"\"}",
+              "legendFormat": "{{node}} gpu{{gpu}} · total"
+            }
+          ]
         },
-        "overrides": []
-      },
-      "targets": [
         {
-          "expr": "DCGM_FI_DEV_TOTAL_ENERGY_CONSUMPTION",
-          "legendFormat": "{{gpu_uuid}}"
-        }
-      ]
-    },
-    {
-      "id": 18,
-      "type": "timeseries",
-      "title": "DCGM_FI_DEV_UNCORRECTABLE_REMAPPED_ROWS",
-      "description": "DCGM hardware counter.",
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 12,
-        "y": 56
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "gpu-prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "custom": {
-            "fillOpacity": 8
-          }
+          "id": 13,
+          "type": "timeseries",
+          "title": "Memory Used / Total, MIG-Aware",
+          "description": "Framebuffer memory as the profiling source reports it, converted from its native MiB to bytes for consistent units with the rest of this dashboard. Off MIG this matches the whole-card figure to the left almost exactly. Once a MIG instance exists on a card, this is re-scoped to that instance automatically — so it is the number that reflects what a tenant can actually use, unlike the whole-card figure to the left, which keeps counting the full card even after most of it has been sliced away to instances.",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 8
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gpu-prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes",
+              "custom": {
+                "fillOpacity": 8
+              }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "expr": "DCGM_FI_DEV_FB_USED{gpu_uuid=~\"$gpu\"} * 1048576",
+              "legendFormat": "{{node}} gpu{{gpu}} · used"
+            },
+            {
+              "expr": "DCGM_FI_DEV_FB_TOTAL{gpu_uuid=~\"$gpu\"} * 1048576",
+              "legendFormat": "{{node}} gpu{{gpu}} · total"
+            }
+          ]
         },
-        "overrides": []
-      },
-      "targets": [
         {
-          "expr": "DCGM_FI_DEV_UNCORRECTABLE_REMAPPED_ROWS",
-          "legendFormat": "{{gpu_uuid}}"
-        }
-      ]
-    },
-    {
-      "id": 19,
-      "type": "timeseries",
-      "title": "DCGM_FI_DEV_VGPU_LICENSE_STATUS",
-      "description": "DCGM hardware counter.",
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 0,
-        "y": 63
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "gpu-prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "custom": {
-            "fillOpacity": 8
-          }
-        },
-        "overrides": []
-      },
-      "targets": [
-        {
-          "expr": "DCGM_FI_DEV_VGPU_LICENSE_STATUS",
-          "legendFormat": "{{gpu_uuid}}"
+          "id": 14,
+          "type": "timeseries",
+          "title": "Memory Held by Each Pod",
+          "description": "Device memory currently held by each pod's own CUDA processes (NVML, per-process — the only per-process metric that survives MIG intact). Empty whenever no pod is actively running CUDA on a GPU; check the Allocation & Support row to see who merely holds a device without using it.",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 8
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gpu-prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes",
+              "custom": {
+                "fillOpacity": 8
+              }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "expr": "sum by (namespace, pod, gpu_uuid) (nvml_process_gpu_memory_bytes{gpu_uuid=~\"$gpu\"})",
+              "legendFormat": "{{namespace}}/{{pod}}"
+            }
+          ]
         }
       ]
     },
     {
       "id": 20,
-      "type": "timeseries",
-      "title": "DCGM_FI_PROF_DRAM_ACTIVE",
-      "description": "Device memory interface activity. High DRAM with low SM activity means memory-bound.",
+      "type": "row",
+      "title": "Power & Thermals",
+      "collapsed": true,
       "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 12,
-        "y": 63
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "gpu-prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percentunit",
-          "custom": {
-            "fillOpacity": 8
-          }
-        },
-        "overrides": []
-      },
-      "targets": [
-        {
-          "expr": "DCGM_FI_PROF_DRAM_ACTIVE",
-          "legendFormat": "{{gpu_uuid}}"
-        }
-      ]
-    },
-    {
-      "id": 21,
-      "type": "timeseries",
-      "title": "DCGM_FI_PROF_GR_ENGINE_ACTIVE",
-      "description": "Ratio of time the graphics/compute engine was active. Stricter than GPU utilization and the measure that stays valid under MIG.",
-      "gridPos": {
-        "h": 7,
-        "w": 12,
+        "h": 1,
+        "w": 24,
         "x": 0,
-        "y": 70
+        "y": 7
       },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "gpu-prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percentunit",
-          "custom": {
-            "fillOpacity": 8
-          }
-        },
-        "overrides": []
-      },
-      "targets": [
+      "panels": [
         {
-          "expr": "DCGM_FI_PROF_GR_ENGINE_ACTIVE",
-          "legendFormat": "{{gpu_uuid}}"
-        }
-      ]
-    },
-    {
-      "id": 22,
-      "type": "timeseries",
-      "title": "DCGM_FI_PROF_PCIE_RX_BYTES",
-      "description": "DCGM hardware counter.",
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 12,
-        "y": 70
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "gpu-prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "custom": {
-            "fillOpacity": 8
-          }
+          "id": 16,
+          "type": "gauge",
+          "title": "Power Draw — Current",
+          "description": "Instantaneous board power per GPU. NVML is the designated source; DCGM collects an equivalent legacy field but this dashboard does not query it. Scaled to the A30's 165 W board power limit — adjust the max if the fleet grows a different card model.",
+          "gridPos": {
+            "h": 8,
+            "w": 6,
+            "x": 0,
+            "y": 0
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gpu-prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "watt",
+              "min": 0,
+              "max": 165,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 115
+                  },
+                  {
+                    "color": "red",
+                    "value": 148
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "orientation": "auto",
+            "showThresholdLabels": false,
+            "showThresholdMarkers": true
+          },
+          "targets": [
+            {
+              "expr": "nvml_gpu_power_watts{gpu_uuid=~\"$gpu\"}",
+              "legendFormat": "{{node}} gpu{{gpu}}",
+              "instant": true
+            }
+          ]
         },
-        "overrides": []
-      },
-      "targets": [
         {
-          "expr": "DCGM_FI_PROF_PCIE_RX_BYTES",
-          "legendFormat": "{{gpu_uuid}}"
+          "id": 17,
+          "type": "gauge",
+          "title": "Temperature — Current",
+          "description": "Core temperature per GPU. NVML is the designated source; DCGM's equivalent legacy field is not queried here. The scale is a generic caution/danger band for any datacenter GPU, not a model-specific spec limit.",
+          "gridPos": {
+            "h": 8,
+            "w": 6,
+            "x": 6,
+            "y": 0
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gpu-prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "celsius",
+              "min": 0,
+              "max": 100,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 75
+                  },
+                  {
+                    "color": "red",
+                    "value": 85
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "orientation": "auto",
+            "showThresholdLabels": false,
+            "showThresholdMarkers": true
+          },
+          "targets": [
+            {
+              "expr": "nvml_gpu_temperature_celsius{gpu_uuid=~\"$gpu\"}",
+              "legendFormat": "{{node}} gpu{{gpu}}",
+              "instant": true
+            }
+          ]
+        },
+        {
+          "id": 18,
+          "type": "timeseries",
+          "title": "Power Draw Over Time",
+          "description": "Per-GPU board power, trended. Same NVML source as the current-value gauge; useful for spotting a job that ramps up compute without the tensor pipes ever engaging — power rises while Tensor & Precision Pipe Activity (Utilization row) stays flat.",
+          "gridPos": {
+            "h": 8,
+            "w": 6,
+            "x": 12,
+            "y": 0
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gpu-prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "watt",
+              "custom": {
+                "fillOpacity": 8
+              }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "expr": "nvml_gpu_power_watts{gpu_uuid=~\"$gpu\"}",
+              "legendFormat": "{{node}} gpu{{gpu}}"
+            }
+          ]
+        },
+        {
+          "id": 19,
+          "type": "timeseries",
+          "title": "Temperature Over Time",
+          "description": "Per-GPU core temperature, trended against the throttle reasons below — a rising line that crosses into hw_thermal_slowdown/sw_thermal_slowdown territory explains a clock drop before the operator has to guess.",
+          "gridPos": {
+            "h": 8,
+            "w": 6,
+            "x": 18,
+            "y": 0
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gpu-prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "celsius",
+              "custom": {
+                "fillOpacity": 8
+              }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "expr": "nvml_gpu_temperature_celsius{gpu_uuid=~\"$gpu\"}",
+              "legendFormat": "{{node}} gpu{{gpu}}"
+            }
+          ]
         }
       ]
     },
     {
       "id": 23,
-      "type": "timeseries",
-      "title": "DCGM_FI_PROF_PCIE_TX_BYTES",
-      "description": "DCGM hardware counter.",
+      "type": "row",
+      "title": "Clocks & Throttling",
+      "collapsed": true,
       "gridPos": {
-        "h": 7,
-        "w": 12,
+        "h": 1,
+        "w": 24,
         "x": 0,
-        "y": 77
+        "y": 8
       },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "gpu-prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "custom": {
-            "fillOpacity": 8
-          }
-        },
-        "overrides": []
-      },
-      "targets": [
+      "panels": [
         {
-          "expr": "DCGM_FI_PROF_PCIE_TX_BYTES",
-          "legendFormat": "{{gpu_uuid}}"
-        }
-      ]
-    },
-    {
-      "id": 24,
-      "type": "timeseries",
-      "title": "DCGM_FI_PROF_PIPE_FP16_ACTIVE",
-      "description": "DCGM hardware counter.",
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 12,
-        "y": 77
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "gpu-prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percentunit",
-          "custom": {
-            "fillOpacity": 8
-          }
+          "id": 21,
+          "type": "timeseries",
+          "title": "Clock Frequencies",
+          "description": "SM and memory clock domains, kept as separate lines by the clock label — collapsing them together would silently average two different frequency domains into a meaningless number. A clock pinned near its floor while the panel to the right shows an active throttle reason explains why; pinned low with no reason active is worth investigating on its own.",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 0
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gpu-prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "hertz",
+              "custom": {
+                "fillOpacity": 8
+              }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "expr": "nvml_gpu_clock_hertz{gpu_uuid=~\"$gpu\"}",
+              "legendFormat": "{{node}} gpu{{gpu}} · {{clock}}"
+            }
+          ]
         },
-        "overrides": []
-      },
-      "targets": [
         {
-          "expr": "DCGM_FI_PROF_PIPE_FP16_ACTIVE",
-          "legendFormat": "{{gpu_uuid}}"
-        }
-      ]
-    },
-    {
-      "id": 25,
-      "type": "timeseries",
-      "title": "DCGM_FI_PROF_PIPE_FP32_ACTIVE",
-      "description": "DCGM hardware counter.",
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 0,
-        "y": 84
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "gpu-prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percentunit",
-          "custom": {
-            "fillOpacity": 8
-          }
-        },
-        "overrides": []
-      },
-      "targets": [
-        {
-          "expr": "DCGM_FI_PROF_PIPE_FP32_ACTIVE",
-          "legendFormat": "{{gpu_uuid}}"
-        }
-      ]
-    },
-    {
-      "id": 26,
-      "type": "timeseries",
-      "title": "DCGM_FI_PROF_PIPE_FP64_ACTIVE",
-      "description": "DCGM hardware counter.",
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 12,
-        "y": 84
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "gpu-prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percentunit",
-          "custom": {
-            "fillOpacity": 8
-          }
-        },
-        "overrides": []
-      },
-      "targets": [
-        {
-          "expr": "DCGM_FI_PROF_PIPE_FP64_ACTIVE",
-          "legendFormat": "{{gpu_uuid}}"
+          "id": 22,
+          "type": "state-timeline",
+          "title": "Clock Throttle Reasons",
+          "description": "Which named reason is currently holding the clocks down (0 inactive, 1 active), one row per reason this GPU's driver reports. A reason missing from the legend was never probed as supported on this GPU — it was not silently assumed inactive, it is simply absent. gpu_idle is expected to be on whenever nothing is running; the others are the ones worth alerting a human about.",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 0
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gpu-prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "custom": {
+                "lineWidth": 0,
+                "fillOpacity": 70
+              },
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "0": {
+                      "text": "Inactive",
+                      "color": "green",
+                      "index": 0
+                    },
+                    "1": {
+                      "text": "Active",
+                      "color": "red",
+                      "index": 1
+                    }
+                  }
+                }
+              ]
+            },
+            "overrides": []
+          },
+          "options": {
+            "mergeValues": true,
+            "showValue": "auto",
+            "alignValue": "center",
+            "rowHeight": 0.9
+          },
+          "targets": [
+            {
+              "expr": "nvml_gpu_clocks_event_reason_active{gpu_uuid=~\"$gpu\"}",
+              "legendFormat": "{{node}} gpu{{gpu}} · {{reason}}"
+            }
+          ]
         }
       ]
     },
     {
       "id": 27,
-      "type": "timeseries",
-      "title": "DCGM_FI_PROF_PIPE_TENSOR_ACTIVE",
-      "description": "DCGM hardware counter.",
+      "type": "row",
+      "title": "Per-Pod",
+      "collapsed": true,
       "gridPos": {
-        "h": 7,
-        "w": 12,
+        "h": 1,
+        "w": 24,
         "x": 0,
-        "y": 91
+        "y": 9
       },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "gpu-prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percentunit",
-          "custom": {
-            "fillOpacity": 8
+      "panels": [
+        {
+          "id": 24,
+          "type": "table",
+          "title": "Live GPU Usage by Pod",
+          "description": "Every pod currently consuming SM cycles on a GPU, with how hard (fraction of SM capacity used by that pod's own processes) as of the latest scrape. Empty whenever no pod is actively computing — that is a legitimately idle cluster, not a broken panel; cross-check against the entitlement table in Allocation & Support to see who is holding a GPU without using it.",
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 0
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gpu-prometheus"
+          },
+          "targets": [
+            {
+              "expr": "nvml_process_sm_utilization_ratio{gpu_uuid=~\"$gpu\"}",
+              "format": "table",
+              "instant": true
+            }
+          ],
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true,
+                  "__name__": true,
+                  "job": true,
+                  "instance": true,
+                  "service": true,
+                  "endpoint": true,
+                  "node": true,
+                  "gpu": true
+                }
+              }
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit"
+            },
+            "overrides": []
           }
         },
-        "overrides": []
-      },
-      "targets": [
         {
-          "expr": "DCGM_FI_PROF_PIPE_TENSOR_ACTIVE",
-          "legendFormat": "{{gpu_uuid}}"
-        }
-      ]
-    },
-    {
-      "id": 28,
-      "type": "timeseries",
-      "title": "DCGM_FI_PROF_PIPE_TENSOR_HMMA_ACTIVE",
-      "description": "DCGM hardware counter.",
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 12,
-        "y": 91
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "gpu-prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percentunit",
-          "custom": {
-            "fillOpacity": 8
-          }
+          "id": 25,
+          "type": "timeseries",
+          "title": "Per-Pod Compute Utilization",
+          "description": "Trend of the same per-pod SM-utilization figure as the table above. On a shared (non-MIG) device this is what separates a saturated tenant from an idle one; unavailable under MIG, where entitlement is the substitute (a MIG instance is exclusively assigned, so holding it is using it).",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 8
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gpu-prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit",
+              "custom": {
+                "fillOpacity": 8
+              }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "expr": "sum by (namespace, pod, gpu_uuid) (nvml_process_sm_utilization_ratio{gpu_uuid=~\"$gpu\"})",
+              "legendFormat": "{{namespace}}/{{pod}}"
+            }
+          ]
         },
-        "overrides": []
-      },
-      "targets": [
         {
-          "expr": "DCGM_FI_PROF_PIPE_TENSOR_HMMA_ACTIVE",
-          "legendFormat": "{{gpu_uuid}}"
-        }
-      ]
-    },
-    {
-      "id": 29,
-      "type": "timeseries",
-      "title": "DCGM_FI_PROF_PIPE_TENSOR_IMMA_ACTIVE",
-      "description": "DCGM hardware counter.",
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 0,
-        "y": 98
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "gpu-prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percentunit",
-          "custom": {
-            "fillOpacity": 8
-          }
-        },
-        "overrides": []
-      },
-      "targets": [
-        {
-          "expr": "DCGM_FI_PROF_PIPE_TENSOR_IMMA_ACTIVE",
-          "legendFormat": "{{gpu_uuid}}"
+          "id": 26,
+          "type": "timeseries",
+          "title": "Per-Pod Memory Bandwidth Utilization",
+          "description": "Fraction of each period a pod's processes spent reading or writing device memory — distinguishes a bandwidth-bound tenant from a compute-bound one on the same card. Pair with Per-Pod Compute Utilization: high here with low there points at a data-starved kernel.",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 8
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gpu-prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit",
+              "custom": {
+                "fillOpacity": 8
+              }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "expr": "sum by (namespace, pod, gpu_uuid) (nvml_process_memory_utilization_ratio{gpu_uuid=~\"$gpu\"})",
+              "legendFormat": "{{namespace}}/{{pod}}"
+            }
+          ]
         }
       ]
     },
     {
       "id": 30,
-      "type": "timeseries",
-      "title": "DCGM_FI_PROF_SM_ACTIVE",
-      "description": "Fraction of cycles at least one warp was resident on an SM.",
+      "type": "row",
+      "title": "Allocation & Support",
+      "collapsed": true,
       "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 12,
-        "y": 98
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "gpu-prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percentunit",
-          "custom": {
-            "fillOpacity": 8
-          }
-        },
-        "overrides": []
-      },
-      "targets": [
-        {
-          "expr": "DCGM_FI_PROF_SM_ACTIVE",
-          "legendFormat": "{{gpu_uuid}}"
-        }
-      ]
-    },
-    {
-      "id": 31,
-      "type": "timeseries",
-      "title": "DCGM_FI_PROF_SM_OCCUPANCY",
-      "description": "Resident warps against the hardware maximum. High occupancy does not imply efficient work.",
-      "gridPos": {
-        "h": 7,
-        "w": 12,
+        "h": 1,
+        "w": 24,
         "x": 0,
-        "y": 105
+        "y": 10
       },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "gpu-prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percentunit",
-          "custom": {
-            "fillOpacity": 8
+      "panels": [
+        {
+          "id": 28,
+          "type": "table",
+          "title": "Entitlement — Who Holds Each GPU",
+          "description": "The raw grant: which pod has been given which device or MIG instance, and how (device-plugin, annotation, or DRA). This is entitlement, not activity — a row here with nothing in the Per-Pod usage panels is a GPU that is held and idle, which is exactly what automated reclamation looks for. The underlying series is a constant 1; everything meaningful is in its labels, which is why this is a table and not a graph.",
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 0
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gpu-prometheus"
+          },
+          "targets": [
+            {
+              "expr": "gpu_alloc_device_pod_info{gpu_uuid=~\"$gpu\"}",
+              "format": "table",
+              "instant": true
+            }
+          ],
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true,
+                  "__name__": true,
+                  "job": true,
+                  "instance": true,
+                  "service": true,
+                  "endpoint": true,
+                  "node": true,
+                  "gpu": true,
+                  "Value": true
+                }
+              }
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": []
           }
         },
-        "overrides": []
-      },
-      "targets": [
         {
-          "expr": "DCGM_FI_PROF_SM_OCCUPANCY",
-          "legendFormat": "{{gpu_uuid}}"
+          "id": 29,
+          "type": "table",
+          "title": "Metric Support Matrix",
+          "description": "Whether each GPU can produce each metric this dashboard uses: 'Supported', 'Not supported on this GPU' (a hardware or driver limitation, not a fault), or absent from this table entirely, which means UNKNOWN — the exporter could not determine support and nothing is claimed either way. Check here before concluding an empty panel elsewhere on this dashboard is broken.",
+          "gridPos": {
+            "h": 14,
+            "w": 24,
+            "x": 0,
+            "y": 8
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gpu-prometheus"
+          },
+          "targets": [
+            {
+              "expr": "gpu_metric_supported{gpu_uuid=~\"$gpu\"}",
+              "format": "table",
+              "instant": true
+            }
+          ],
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true,
+                  "__name__": true,
+                  "job": true,
+                  "instance": true,
+                  "namespace": true,
+                  "pod": true,
+                  "service": true,
+                  "container": true,
+                  "endpoint": true,
+                  "node": true,
+                  "gpu": true,
+                  "GPU_I_ID": true
+                }
+              }
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "0": {
+                      "text": "Not supported on this GPU",
+                      "color": "text",
+                      "index": 0
+                    },
+                    "1": {
+                      "text": "Supported",
+                      "color": "green",
+                      "index": 1
+                    }
+                  }
+                }
+              ]
+            },
+            "overrides": []
+          }
         }
       ]
     }

@@ -80,16 +80,9 @@ spec:
             # to one mount would hide the first.
             - name: dash-gpu-hardware
               mountPath: /var/lib/grafana/dashboards/gpu-hardware
-            - name: dash-gpu-per-pod
-              mountPath: /var/lib/grafana/dashboards/gpu-per-pod
-            - name: dash-gpu-allocation
-              mountPath: /var/lib/grafana/dashboards/gpu-allocation
-            - name: dash-gpu-cuda
-              mountPath: /var/lib/grafana/dashboards/gpu-cuda
-            - name: dashboards-ebpf
-              mountPath: /var/lib/grafana/dashboards/ebpf
-            - name: storage
-              mountPath: /var/lib/grafana
+            - name: dash-gpu-software
+              mountPath: /var/lib/grafana/dashboards/gpu-software
+
           readinessProbe:
             httpGet:
               path: /api/health
@@ -106,21 +99,9 @@ spec:
           configMap:
             name: grafana-dashboard-gpu-hardware
             optional: true
-        - name: dash-gpu-per-pod
+        - name: dash-gpu-software
           configMap:
-            name: grafana-dashboard-gpu-per-pod
-            optional: true
-        - name: dash-gpu-allocation
-          configMap:
-            name: grafana-dashboard-gpu-allocation
-            optional: true
-        - name: dash-gpu-cuda
-          configMap:
-            name: grafana-dashboard-gpu-cuda
-            optional: true
-        - name: dashboards-ebpf
-          configMap:
-            name: grafana-dashboard-ebpf-cuda
+            name: grafana-dashboard-gpu-software
             optional: true
         - name: storage
           emptyDir: {}
