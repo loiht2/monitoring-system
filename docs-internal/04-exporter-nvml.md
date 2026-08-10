@@ -117,6 +117,22 @@ DaemonSet on GPU nodes, selected by the standard GPU-present node label.
 > **Two pods sharing one physical device, granted different compute shares, must be distinguishable by
 > `nvml_process_sm_utilization_ratio` in proportion to their shares.**
 
+**Result: attribution passes, proportionality does not — and the exporter is not at fault.** Measured on one
+A30 with two HAMi co-tenants granted `cores` 60 and 20 and memory 8000Mi and 4000Mi:
+
+| | Granted ratio | Measured ratio |
+|---|---|---|
+| `nvml_process_gpu_memory_bytes` | 2.00 | **2.009** |
+| `nvml_process_sm_utilization_ratio` | 3.00 | **0.82 - 1.04**, order flips between scrapes |
+
+Memory tracks the grant to three digits, which is what establishes the measurement is sound. The SM split sits
+at roughly 50/50 regardless of the 3:1 core grant, so **HAMi is not enforcing `cores` proportionally here.**
+
+The premise this criterion exists to test — that co-tenants on a shared card can be told apart at all — holds.
+What fails is the assumption that HAMi's core grant translates into SM share, and finding exactly that kind of
+divergence between what a scheduler promises and what the silicon does is why this system was built
+([02 § 6](02-metric-catalog.md) records it as an intended comparison). Do not "fix" the exporter against it.
+
 | Check | Expected |
 |---|---|
 | Idle entitlement | `gpu_alloc_device_pod_info` present, `nvml_process_*` absent |
