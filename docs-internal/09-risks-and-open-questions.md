@@ -18,6 +18,36 @@ deliberately does not do.
 These concern the production environment, where a monitoring stack and its consumers already exist. Each is a
 silent failure — none produces an error.
 
+### R-HAMI-MIG — HAMi schedules onto a MIG-partitioned card and the workload silently runs on CPU
+
+Observed on HAMi 2.9.0 with GPU 1 partitioned into one `1g.6gb` instance.
+
+HAMi still advertises the partitioned card as a whole GPU (`hami-gpu-1`) and happily allocated it to a
+resnet50 training pod. The container saw the parent device, CUDA was unusable on it, and **PyTorch fell back
+to CPU rather than failing**. The pod stayed `Running`, printed plausible loss values, and reported ~2.3s per
+step — roughly fifty times slower than the same work on a GPU, which is the only visible symptom.
+
+What each source reported, all correctly:
+
+| Source | Reading | Why |
+|---|---|---|
+| HAMi | 50 cores committed on `hami-gpu-1` | It believes it granted a whole card |
+| DCGM | no device-level series at all | A MIG card reports only instance entities |
+| DCGM `GPU_I` | `SM_ACTIVE` 0 | The instance really is idle; the work never reached it |
+| NVML per-pod | nothing | Per-process collection is deliberately skipped on a MIG parent to avoid double-counting |
+| `nvidia-smi` | no compute process, 36 MiB used | The card is genuinely doing nothing |
+
+**The monitoring was right and everything else was wrong.** Four independent sources agreeing on "no GPU
+work" while the pod looks healthy is precisely the case this system exists to surface, and none of the usual
+signals — pod status, restart count, application logs — would have caught it.
+
+Two consequences:
+
+- **Do not enable MIG on a card HAMi manages** unless HAMi is configured to know about it. Its device
+  inventory is built from whole-card discovery.
+- A per-pod GPU metric that is *absent* while a pod is `Running` and claims a GPU deserves an alert. It means
+  either this, or the resolver is broken; both need a human.
+
 ### R-1 — Renaming a label breaks alert rules permanently
 
 Alert rules that divide one metric by another **without an explicit `on()` clause** match on the complete label
