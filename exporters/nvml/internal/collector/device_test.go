@@ -184,6 +184,92 @@ func TestNonMIGDeviceHasNoGPUIIDLabel(t *testing.T) {
 	}
 }
 
+func TestSupportedReadingEmitsOne(t *testing.T) {
+	s := fullState()
+	s.Support = map[string]bool{"nvml_gpu_power_watts": true}
+	var got *Sample
+	for _, r := range collectDevice(s) {
+		if r.Name == "gpu_metric_supported" && r.Labels["metric"] == "nvml_gpu_power_watts" {
+			r := r
+			got = &r
+		}
+	}
+	if got == nil {
+		t.Fatal("expected a gpu_metric_supported series for nvml_gpu_power_watts")
+	}
+	if got.Value != 1 {
+		t.Fatalf("value = %v; want 1", got.Value)
+	}
+	if got.Labels["source"] != "nvml" {
+		t.Fatalf("source = %q; want nvml", got.Labels["source"])
+	}
+}
+
+func TestUnsupportedReadingEmitsZero(t *testing.T) {
+	// This is a capability fact, not a measurement — 0 here means "this GPU
+	// definitively cannot produce this metric", which is exactly the
+	// information the dashboard needs. Unlike a measurement, 0 is correct.
+	s := fullState()
+	s.Support = map[string]bool{"nvml_gpu_power_watts": false}
+	var got *Sample
+	for _, r := range collectDevice(s) {
+		if r.Name == "gpu_metric_supported" && r.Labels["metric"] == "nvml_gpu_power_watts" {
+			r := r
+			got = &r
+		}
+	}
+	if got == nil {
+		t.Fatal("expected a gpu_metric_supported series for nvml_gpu_power_watts")
+	}
+	if got.Value != 0 {
+		t.Fatalf("value = %v; want 0", got.Value)
+	}
+}
+
+func TestUnknownSupportEmitsNothing(t *testing.T) {
+	// A metric with no Support entry means NVML returned a transient failure
+	// (driver busy, device lost, permission), not evidence of hardware
+	// incapability. Recording it would plant a permanent false "unsupported"
+	// claim in a series the dashboard treats as fact, so it must be omitted.
+	s := fullState()
+	s.Support = map[string]bool{}
+	for _, r := range collectDevice(s) {
+		if r.Name == "gpu_metric_supported" && r.Labels["metric"] == "nvml_gpu_power_watts" {
+			t.Fatalf("unknown support was emitted as a series: %+v", r)
+		}
+	}
+}
+
+func TestSupportOnMIGInstanceCarriesMIGUUID(t *testing.T) {
+	s := fullState()
+	s.Support = map[string]bool{"nvml_gpu_power_watts": true}
+	dev := fakeStateDevice{uuid: "GPU-parent", index: 1, state: s, isMIG: true, migUUID: "MIG-instance"}
+	rows := NewDeviceCollector([]StateDevice{dev}, "node-a").Collect()
+	found := false
+	for _, r := range rows {
+		if r.Name != "gpu_metric_supported" {
+			continue
+		}
+		found = true
+		if r.Labels["mig_uuid"] != "MIG-instance" {
+			t.Fatalf("mig_uuid = %q; want MIG-instance", r.Labels["mig_uuid"])
+		}
+	}
+	if !found {
+		t.Fatal("expected gpu_metric_supported series")
+	}
+
+	nonMig := collectDevice(s)
+	for _, r := range nonMig {
+		if r.Name != "gpu_metric_supported" {
+			continue
+		}
+		if _, present := r.Labels["mig_uuid"]; present {
+			t.Fatalf("non-MIG device must not carry a mig_uuid key at all, got %+v", r.Labels)
+		}
+	}
+}
+
 func TestNoDCGMOwnedMetricIsEmitted(t *testing.T) {
 	// PCIe, NVLink, C2C and every profiling-derived ratio belong to DCGM
 	// (docs-internal/00 § 3). Emitting one would create a second source.

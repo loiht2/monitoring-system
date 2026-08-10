@@ -61,6 +61,47 @@ func (d nvmlDevice) MIGInfo() (string, int, bool) {
 
 func (d nvmlDevice) MIGEnabled() bool { return d.mig }
 
+// supportFrom maps an NVML return code to a capability fact
+// (docs-internal/10-metric-support-signal.md § 2.1). known=false means the
+// call failed for a reason that says nothing about what the hardware can do,
+// so the caller must record no entry at all: a transient error must never
+// become a permanent "unsupported" claim.
+func supportFrom(ret nvml.Return) (supported bool, known bool) {
+	switch ret {
+	case nvml.SUCCESS:
+		return true, true
+	case nvml.ERROR_NOT_SUPPORTED:
+		return false, true
+	default:
+		return false, false
+	}
+}
+
+// record writes the supportFrom outcome for ret into m under name, doing
+// nothing when the outcome is unknown.
+func record(m map[string]bool, name string, ret nvml.Return) {
+	if supported, known := supportFrom(ret); known {
+		m[name] = supported
+	}
+}
+
+// migSupport reports the process-utilization support facts that are known at
+// MIG-decision time, independent of the per-device State() call: NVML does
+// not implement GetProcessUtilization on a MIG device, which is itself a
+// known-unsupported fact for the two per-process ratio metrics. State() and
+// Processes() are both methods on this same value, but neither can see the
+// other's map, so this helper is the single place that fact is expressed and
+// both callers merge it into their own Support map instead of guessing.
+func (d nvmlDevice) migSupport() map[string]bool {
+	if !d.mig {
+		return nil
+	}
+	return map[string]bool{
+		"nvml_process_sm_utilization_ratio":     false,
+		"nvml_process_memory_utilization_ratio": false,
+	}
+}
+
 func (d nvmlDevice) Processes() []collector.ProcSample {
 	byPID := map[uint32]*collector.ProcSample{}
 
@@ -128,29 +169,70 @@ func (d nvmlDevice) State() collector.DeviceState {
 		SMClockMHz:       collector.NotSupported,
 		MemClockMHz:      collector.NotSupported,
 		EventReasons:     map[string]bool{},
+		Support:          map[string]bool{},
 	}
 
-	if u, ret := d.handle.GetUtilizationRates(); ret == nvml.SUCCESS {
+	// Each reading maps its NVML return code three ways
+	// (docs-internal/10-metric-support-signal.md § 2.1): SUCCESS records the
+	// value AND support=true; ERROR_NOT_SUPPORTED records support=false with
+	// no value; any other error leaves the value absent and records NO
+	// support entry at all, because a transient failure is not evidence the
+	// hardware can't do this.
+	u, ret := d.handle.GetUtilizationRates()
+	if ret == nvml.SUCCESS {
 		s.GPUUtilPercent = int(u.Gpu)
 	}
-	if m, ret := d.handle.GetMemoryInfo(); ret == nvml.SUCCESS {
+	record(s.Support, "nvml_gpu_utilization_ratio", ret)
+
+	m, ret := d.handle.GetMemoryInfo()
+	if ret == nvml.SUCCESS {
 		s.MemoryUsedBytes = float64(m.Used)
 		s.MemoryFreeBytes = float64(m.Free)
 		s.MemoryTotalBytes = float64(m.Total)
 	}
-	if p, ret := d.handle.GetPowerUsage(); ret == nvml.SUCCESS {
+	record(s.Support, "nvml_gpu_memory_used_bytes", ret)
+	record(s.Support, "nvml_gpu_memory_free_bytes", ret)
+	record(s.Support, "nvml_gpu_memory_total_bytes", ret)
+
+	p, ret := d.handle.GetPowerUsage()
+	if ret == nvml.SUCCESS {
 		s.PowerMilliwatts = float64(p)
 	}
-	if t, ret := d.handle.GetTemperature(nvml.TEMPERATURE_GPU); ret == nvml.SUCCESS {
+	record(s.Support, "nvml_gpu_power_watts", ret)
+
+	t, ret := d.handle.GetTemperature(nvml.TEMPERATURE_GPU)
+	if ret == nvml.SUCCESS {
 		s.TemperatureC = float64(t)
 	}
-	if c, ret := d.handle.GetClockInfo(nvml.CLOCK_SM); ret == nvml.SUCCESS {
-		s.SMClockMHz = float64(c)
+	record(s.Support, "nvml_gpu_temperature_celsius", ret)
+	// nvml_gpu_clock_hertz covers two clock domains under one metric name, so
+	// it gets a single Support entry: supported if EITHER domain reads
+	// successfully. An ERROR_NOT_SUPPORTED on one domain only counts as a
+	// definitive "false" if the other domain didn't already prove "true", and
+	// any other error on a domain contributes nothing (unknown) unless the
+	// other domain resolves it either way.
+	smOK, smRet := d.handle.GetClockInfo(nvml.CLOCK_SM)
+	if smRet == nvml.SUCCESS {
+		s.SMClockMHz = float64(smOK)
 	}
-	if c, ret := d.handle.GetClockInfo(nvml.CLOCK_MEM); ret == nvml.SUCCESS {
-		s.MemClockMHz = float64(c)
+	memOK, memRet := d.handle.GetClockInfo(nvml.CLOCK_MEM)
+	if memRet == nvml.SUCCESS {
+		s.MemClockMHz = float64(memOK)
+	}
+	smSupported, smKnown := supportFrom(smRet)
+	memSupported, memKnown := supportFrom(memRet)
+	switch {
+	case (smKnown && smSupported) || (memKnown && memSupported):
+		s.Support["nvml_gpu_clock_hertz"] = true
+	case smKnown && memKnown:
+		// Both calls resolved and neither succeeded, so supportFrom gave
+		// (false, true) for each: both domains are definitively unsupported.
+		s.Support["nvml_gpu_clock_hertz"] = false
 	}
 	s.EventReasons = d.eventReasons()
+	for metric, supported := range d.migSupport() {
+		s.Support[metric] = supported
+	}
 	return s
 }
 

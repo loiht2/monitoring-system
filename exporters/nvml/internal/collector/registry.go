@@ -27,6 +27,7 @@ var help = map[string]string{
 	"nvml_gpu_clock_hertz":                  "Current clock frequency of the named domain.",
 	"nvml_gpu_clocks_event_reason_active":   "Whether the named clock-limiting reason is active.",
 	"gpu_alloc_device_pod_info":             "Pod entitled to this device. Constant 1; information is in the labels.",
+	"gpu_metric_supported":                  "Whether this GPU can produce the named metric: 1 supported, 0 not supported, absent unknown.",
 }
 
 // PrometheusAdapter exposes our Samples through client_golang.

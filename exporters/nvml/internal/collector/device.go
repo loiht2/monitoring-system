@@ -21,6 +21,22 @@ type DeviceState struct {
 	// EventReasons holds only the reasons the device reports as SUPPORTED. An
 	// unsupported reason must be absent from the map, not present as false.
 	EventReasons map[string]bool
+	// Support records, per EXPOSED METRIC NAME, whether this GPU can produce
+	// that metric — the gpu_metric_supported capability signal
+	// (docs-internal/10-metric-support-signal.md). It maps an NVML return
+	// code three ways, not two:
+	//
+	//   SUCCESS             -> true  (metric present in this DeviceState)
+	//   ERROR_NOT_SUPPORTED -> false (recorded here as an explicit entry)
+	//   any other error     -> no entry at all
+	//
+	// The third case is load-bearing: a transient failure (driver busy,
+	// device lost, permission) is not evidence the hardware can't do this,
+	// and recording it as false would plant a permanent, false "unsupported"
+	// claim in a series the dashboard presents as fact. An unknown reading
+	// must have NO entry, not a false one — same absence discipline as
+	// EventReasons above, applied to support rather than to activity.
+	Support map[string]bool
 }
 
 // StateDevice is the slice of NVML the device collector needs.
@@ -117,6 +133,15 @@ func (c *DeviceCollector) Collect() []Sample {
 			out = append(out, Sample{
 				"nvml_gpu_clocks_event_reason_active", value, withLabel(base, "reason", reason),
 			})
+		}
+		for metric, supported := range s.Support {
+			value := 0.0
+			if supported {
+				value = 1.0
+			}
+			labels := withLabel(base, "metric", metric)
+			labels["source"] = "nvml"
+			out = append(out, Sample{"gpu_metric_supported", value, labels})
 		}
 	}
 	return out
