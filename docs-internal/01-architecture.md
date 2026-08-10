@@ -162,15 +162,22 @@ DCGM_FI_PROF_SM_ACTIVE
   * on(mig_uuid) group_left(namespace, pod) gpu_alloc_device_pod_info{mig_uuid!=""}
 ```
 
-> **Validated on hardware, and the join key was wrong.** `mig_uuid` resolution works: the NVIDIA DRA
-driver publishes a MIG device as `type: mig` with the instance in `uuid` and the card in `parentUUID`,
-exactly as implemented, and NVML device series now carry `gpu_uuid`=parent plus `mig_uuid`=instance.
+> **Validated on hardware.** `mig_uuid` resolution works: the NVIDIA DRA driver publishes a MIG device as
+`type: mig` with the instance in `uuid` and the card in `parentUUID`. NVML series carry `gpu_uuid`=parent,
+`mig_uuid`=instance, and `GPU_I_ID`.
 
-But **DCGM never publishes a MIG instance UUID.** It labels a MIG series with the *parent* card in `UUID`
-plus `GPU_I_ID` and `GPU_I_PROFILE`. So a join `on(mig_uuid)` against DCGM matches nothing, no matter how
-correct our side is. Reaching a DCGM MIG series requires `(gpu_uuid, GPU_I_ID)`, and this exporter does not
-yet emit `GPU_I_ID` — NVML exposes it as the GPU instance ID on the instance handle. Until it does, DCGM
-hardware counters on a MIG instance cannot be attributed to a pod.
+**DCGM never publishes a MIG instance UUID**, so `on(mig_uuid)` against DCGM matches nothing. DCGM labels a
+MIG series with the parent card in `UUID` plus `GPU_I_ID` and `GPU_I_PROFILE`. The exporter therefore also
+emits `GPU_I_ID`, in DCGM's spelling rather than our snake_case, so the two join with no relabeling:
+
+```promql
+DCGM_FI_PROF_SM_ACTIVE
+  * on(gpu_uuid, GPU_I_ID) group_left(mig_uuid) nvml_gpu_memory_total_bytes
+  * on(mig_uuid) group_left(namespace, pod) gpu_alloc_device_pod_info
+```
+
+Verified live on an A30 with one `1g.6gb` instance: NVML's instance id and DCGM's `GPU_I_ID` both read 3,
+and the join returns the DCGM counter carrying `mig_uuid`.
 
 Because the authoritative source differs by device mode, a dashboard panel expresses this as a fallback chain,
 not one expression.
