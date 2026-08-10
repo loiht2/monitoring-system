@@ -1,0 +1,15 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: gpu-ebpf
+  namespace: gpu-monitoring
+  labels:
+    app.kubernetes.io/part-of: gpu-monitoring   # matched by the Prometheus CR
+spec:
+  selector:
+    matchLabels:
+      app: ebpf-gpu-exporter
+  endpoints:
+    - port: metrics
+      interval: 15s
+      honorLabels: true
