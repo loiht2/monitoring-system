@@ -18,6 +18,13 @@ type nvmlDevice struct {
 	// device, never for one of its instances. Used to skip per-process
 	// collection on the parent (see Processes()).
 	migParent bool
+	// parentUUID is set only on a MIG INSTANCE handle, to the UUID of the
+	// physical device it belongs to. Empty for both non-MIG devices and the
+	// MIG-enabled parent handle itself. UUID() reports this instead of the
+	// handle's own UUID so gpu_uuid always names the physical device
+	// (docs-internal/01-architecture.md §3.1); MIGUUID() reports the
+	// instance's own UUID.
+	parentUUID string
 }
 
 // valueNotAvailable is nvml.h's NVML_VALUE_NOT_AVAILABLE (-1) reinterpreted as
@@ -27,6 +34,20 @@ const valueNotAvailable uint64 = 1<<64 - 1
 func (d nvmlDevice) Index() int { return d.index }
 
 func (d nvmlDevice) UUID() (string, bool) {
+	if d.parentUUID != "" {
+		return d.parentUUID, true
+	}
+	uuid, ret := d.handle.GetUUID()
+	return uuid, ret == nvml.SUCCESS
+}
+
+// MIGUUID reports the MIG instance's own UUID, with ok=false for any handle
+// that is not a MIG instance (a non-MIG device, or a MIG-enabled parent
+// handle).
+func (d nvmlDevice) MIGUUID() (string, bool) {
+	if d.parentUUID == "" {
+		return "", false
+	}
 	uuid, ret := d.handle.GetUUID()
 	return uuid, ret == nvml.SUCCESS
 }
@@ -198,6 +219,11 @@ func discoverDevices() ([]nvmlDevice, error) {
 		if !migOn {
 			continue
 		}
+		parentUUID, ret := handle.GetUUID()
+		if ret != nvml.SUCCESS {
+			slog.Warn("nvml: skipping MIG instance enumeration", "index", i, "error", nvml.ErrorString(ret))
+			continue
+		}
 		max, ret := handle.GetMaxMigDeviceCount()
 		if ret != nvml.SUCCESS {
 			slog.Warn("nvml: skipping MIG instance enumeration", "index", i, "error", nvml.ErrorString(ret))
@@ -209,7 +235,7 @@ func discoverDevices() ([]nvmlDevice, error) {
 				slog.Warn("nvml: skipping MIG instance handle", "index", i, "instance", j, "error", nvml.ErrorString(ret))
 				continue
 			}
-			out = append(out, nvmlDevice{handle: inst, index: i, mig: true})
+			out = append(out, nvmlDevice{handle: inst, index: i, mig: true, parentUUID: parentUUID})
 		}
 	}
 	return out, nil

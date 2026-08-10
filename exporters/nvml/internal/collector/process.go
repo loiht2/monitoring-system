@@ -14,6 +14,13 @@ type ProcSample struct {
 // of use, so tests need no GPU.
 type Device interface {
 	UUID() (string, bool)
+	// MIGUUID reports the MIG instance's own UUID, with ok=false for a
+	// non-MIG handle. UUID() always reports the PHYSICAL device's UUID, even
+	// for a MIG instance (docs-internal/01-architecture.md §3.1) — per-process
+	// memory is only ever read on the instance handle (see nvmldev.go
+	// Processes()), so this collector needs the same parent/instance split as
+	// the device collector.
+	MIGUUID() (string, bool)
 	MIGEnabled() bool
 	Processes() []ProcSample
 }
@@ -30,7 +37,7 @@ func NewProcessCollector(devices []Device, resolve ResolvePID) *ProcessCollector
 	return &ProcessCollector{devices: devices, resolve: resolve}
 }
 
-type podKey struct{ uuid, namespace, pod, container string }
+type podKey struct{ uuid, migUUID, namespace, pod, container string }
 
 // Collect returns per-pod metrics. Values are summed per pod and the host PID is
 // discarded before exposition (docs-internal/01 § 2.1).
@@ -49,11 +56,12 @@ func (c *ProcessCollector) Collect() []Sample {
 			continue
 		}
 		mig := device.MIGEnabled()
+		migUUID, migOK := device.MIGUUID()
 		totals := make(map[podKey]map[string]float64)
 
 		for _, proc := range device.Processes() {
 			namespace, pod, container := c.resolve(proc.PID)
-			key := podKey{uuid, namespace, pod, container}
+			key := podKey{uuid, migUUID, namespace, pod, container}
 			bucket, seen := totals[key]
 			if !seen {
 				bucket = make(map[string]float64)
@@ -83,12 +91,16 @@ func (c *ProcessCollector) Collect() []Sample {
 				// owned by its Sample; sharing one map across the 2-3 Samples
 				// of a pod would mean a later in-place edit to one silently
 				// rewrote the others.
-				out = append(out, Sample{Name: name, Value: value, Labels: map[string]string{
+				labels := map[string]string{
 					"gpu_uuid":  key.uuid,
 					"namespace": key.namespace,
 					"pod":       key.pod,
 					"container": key.container,
-				}})
+				}
+				if migOK {
+					labels = withLabel(labels, "mig_uuid", key.migUUID)
+				}
+				out = append(out, Sample{Name: name, Value: value, Labels: labels})
 			}
 		}
 	}

@@ -6,14 +6,22 @@ import (
 )
 
 type fakeStateDevice struct {
-	uuid  string
-	index int
-	state DeviceState
+	uuid    string
+	index   int
+	state   DeviceState
+	migUUID string
+	isMIG   bool
 }
 
 func (d fakeStateDevice) UUID() (string, bool) { return d.uuid, true }
 func (d fakeStateDevice) Index() int           { return d.index }
 func (d fakeStateDevice) State() DeviceState   { return d.state }
+func (d fakeStateDevice) MIGUUID() (string, bool) {
+	if !d.isMIG {
+		return "", false
+	}
+	return d.migUUID, true
+}
 
 func fullState() DeviceState {
 	return DeviceState{
@@ -38,7 +46,7 @@ func namesOf(rows []Sample) map[string]bool {
 }
 
 func collectDevice(s DeviceState) []Sample {
-	return NewDeviceCollector([]StateDevice{fakeStateDevice{"GPU-1", 0, s}}, "node-a").Collect()
+	return NewDeviceCollector([]StateDevice{fakeStateDevice{uuid: "GPU-1", index: 0, state: s}}, "node-a").Collect()
 }
 
 func TestEmitsExactlyTheNVMLOwnedRows(t *testing.T) {
@@ -110,6 +118,38 @@ func TestOneSeriesPerSupportedEventReason(t *testing.T) {
 	}
 	if !seen["sw_power_cap"] || !seen["hw_thermal_slowdown"] {
 		t.Fatalf("reasons = %v", seen)
+	}
+}
+
+func TestMIGInstanceCarriesParentGPUUUID(t *testing.T) {
+	// A MIG instance's device-level series must carry gpu_uuid = the PARENT
+	// physical GPU's UUID and mig_uuid = the instance's own UUID
+	// (docs-internal/01-architecture.md §3.1). Putting the MIG UUID in
+	// gpu_uuid instead (the observed defect) makes the series unjoinable to
+	// DCGM, which only ever labels gpu_uuid with a physical UUID, and it
+	// inflates GPU inventory counts computed as
+	// count(count by (gpu_uuid) (...)).
+	dev := fakeStateDevice{uuid: "GPU-parent", index: 1, state: fullState(), isMIG: true, migUUID: "MIG-instance"}
+	rows := NewDeviceCollector([]StateDevice{dev}, "node-a").Collect()
+	if len(rows) == 0 {
+		t.Fatal("expected samples")
+	}
+	for _, r := range rows {
+		if r.Labels["gpu_uuid"] != "GPU-parent" {
+			t.Fatalf("gpu_uuid = %q; want parent UUID GPU-parent", r.Labels["gpu_uuid"])
+		}
+		if r.Labels["mig_uuid"] != "MIG-instance" {
+			t.Fatalf("mig_uuid = %q; want MIG-instance", r.Labels["mig_uuid"])
+		}
+	}
+}
+
+func TestNonMIGDeviceHasNoMIGLabel(t *testing.T) {
+	rows := collectDevice(fullState())
+	for _, r := range rows {
+		if _, present := r.Labels["mig_uuid"]; present {
+			t.Fatalf("non-MIG device must not carry a mig_uuid key at all, got %+v", r.Labels)
+		}
 	}
 }
 

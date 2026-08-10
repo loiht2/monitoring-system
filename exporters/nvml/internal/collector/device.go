@@ -26,6 +26,10 @@ type DeviceState struct {
 // StateDevice is the slice of NVML the device collector needs.
 type StateDevice interface {
 	UUID() (string, bool)
+	// MIGUUID reports the MIG instance's own UUID, with ok=false for a
+	// non-MIG handle. UUID() always reports the PHYSICAL device's UUID, even
+	// for a MIG instance (docs-internal/01-architecture.md §3.1).
+	MIGUUID() (string, bool)
 	Index() int
 	State() DeviceState
 }
@@ -56,6 +60,9 @@ func (c *DeviceCollector) Collect() []Sample {
 			"gpu_uuid": uuid,
 			"gpu":      strconv.Itoa(device.Index()),
 			"node":     c.node,
+		}
+		if migUUID, ok := device.MIGUUID(); ok {
+			base = withLabel(base, "mig_uuid", migUUID)
 		}
 
 		if v, ok := Ratio(s.GPUUtilPercent); ok {
