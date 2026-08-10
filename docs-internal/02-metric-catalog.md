@@ -292,3 +292,34 @@ of it.
 | Per-container GPU memory | `nvml_process_gpu_memory_bytes` vs `hami_vgpu_memory_used_bytes` | Memory on the card that HAMi is not counting toward its limit |
 | Per-container utilization | `nvml_process_sm_utilization_ratio` vs `hami_container_device_utilization_ratio` | HAMi's sampling disagrees with the driver's — it is throttling against the wrong number |
 | Idleness | `nvml_process_*` absent, `hami_container_last_kernel_elapsed_seconds` large, `ebpf_cuda_kernel_launch_calls_total` flat | Three independent idle signals; agreement across them is what makes automated reclamation safe |
+
+
+---
+
+## 7. MIG utilization is normalized to the instance (A-8, measured)
+
+Published sources disagreed, so it was measured on a partitioned A30: one `1g.6gb` instance holding **14 of
+the card's 56 SMs**, saturated.
+
+| | Reading |
+|---|---|
+| `DCGM_FI_PROF_GR_ENGINE_ACTIVE{GPU_I_ID!=""}` | **0.999962** |
+| `DCGM_FI_PROF_SM_ACTIVE{GPU_I_ID!=""}` | **0.998474** |
+| device-normalized would have read | ~0.25 |
+
+**Utilization on a MIG instance is relative to that instance, not to the card.** The hypotheses are a factor
+of four apart, so this is not a marginal call.
+
+Two consequences that must shape every MIG panel:
+
+- **A MIG instance at 100% does not mean the card is busy.** Here one instance read ~1.0 while three quarters
+  of the card sat unused. A panel that presents instance utilization as GPU utilization overstates load by
+  the reciprocal of the instance's share.
+- **Instance utilizations must never be summed to get device utilization.** Each is a ratio against a
+  different denominator.
+
+### There is no device-level profiling series on a partitioned card
+
+At the same moment, `DCGM_FI_PROF_GR_ENGINE_ACTIVE` for the parent device did not exist — only the instance
+entity is reported. Whole-card profiling utilization is therefore **not obtainable from DCGM once MIG is
+enabled**; the closest available figure is memory, which NVML still reports per instance and for the card.
