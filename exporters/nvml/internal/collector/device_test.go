@@ -6,21 +6,22 @@ import (
 )
 
 type fakeStateDevice struct {
-	uuid    string
-	index   int
-	state   DeviceState
-	migUUID string
-	isMIG   bool
+	uuid       string
+	index      int
+	state      DeviceState
+	migUUID    string
+	instanceID int
+	isMIG      bool
 }
 
 func (d fakeStateDevice) UUID() (string, bool) { return d.uuid, true }
 func (d fakeStateDevice) Index() int           { return d.index }
 func (d fakeStateDevice) State() DeviceState   { return d.state }
-func (d fakeStateDevice) MIGUUID() (string, bool) {
+func (d fakeStateDevice) MIGInfo() (string, int, bool) {
 	if !d.isMIG {
-		return "", false
+		return "", 0, false
 	}
-	return d.migUUID, true
+	return d.migUUID, d.instanceID, true
 }
 
 func fullState() DeviceState {
@@ -149,6 +150,36 @@ func TestNonMIGDeviceHasNoMIGLabel(t *testing.T) {
 	for _, r := range rows {
 		if _, present := r.Labels["mig_uuid"]; present {
 			t.Fatalf("non-MIG device must not carry a mig_uuid key at all, got %+v", r.Labels)
+		}
+	}
+}
+
+func TestMIGInstanceEmitsGPUIID(t *testing.T) {
+	// DCGM never publishes a MIG instance UUID on any series — it identifies
+	// an instance only by GPU_I_ID within the parent card. So (gpu_uuid,
+	// GPU_I_ID) is the only pair that reaches a DCGM MIG series; a join on
+	// mig_uuid alone matches nothing. GPU_I_ID's value must be the decimal
+	// string DCGM itself emits (e.g. "3"), not a formatted/padded variant.
+	dev := fakeStateDevice{uuid: "GPU-parent", index: 1, state: fullState(), isMIG: true, migUUID: "MIG-instance", instanceID: 3}
+	rows := NewDeviceCollector([]StateDevice{dev}, "node-a").Collect()
+	if len(rows) == 0 {
+		t.Fatal("expected samples")
+	}
+	for _, r := range rows {
+		if r.Labels["GPU_I_ID"] != "3" {
+			t.Fatalf("GPU_I_ID = %q; want \"3\"", r.Labels["GPU_I_ID"])
+		}
+	}
+}
+
+func TestNonMIGDeviceHasNoGPUIIDLabel(t *testing.T) {
+	// Same rationale as TestMIGInstanceEmitsGPUIID: GPU_I_ID only means
+	// something for a MIG instance, so a non-MIG device must not carry the
+	// key at all (absence, not an empty/zero value).
+	rows := collectDevice(fullState())
+	for _, r := range rows {
+		if _, present := r.Labels["GPU_I_ID"]; present {
+			t.Fatalf("non-MIG device must not carry a GPU_I_ID key at all, got %+v", r.Labels)
 		}
 	}
 }

@@ -3,20 +3,21 @@ package collector
 import "testing"
 
 type fakeProcDevice struct {
-	uuid    string
-	mig     bool
-	migUUID string
-	isMIG   bool
-	procs   []ProcSample
+	uuid       string
+	mig        bool
+	migUUID    string
+	instanceID int
+	isMIG      bool
+	procs      []ProcSample
 }
 
 func (d fakeProcDevice) UUID() (string, bool) { return d.uuid, true }
 func (d fakeProcDevice) MIGEnabled() bool     { return d.mig }
-func (d fakeProcDevice) MIGUUID() (string, bool) {
+func (d fakeProcDevice) MIGInfo() (string, int, bool) {
 	if !d.isMIG {
-		return "", false
+		return "", 0, false
 	}
-	return d.migUUID, true
+	return d.migUUID, d.instanceID, true
 }
 func (d fakeProcDevice) Processes() []ProcSample { return d.procs }
 
@@ -196,6 +197,29 @@ func TestNonMIGProcessDeviceHasNoMIGLabel(t *testing.T) {
 	for _, r := range NewProcessCollector([]Device{dev}, resolver).Collect() {
 		if _, present := r.Labels["mig_uuid"]; present {
 			t.Fatalf("non-MIG device must not carry a mig_uuid key at all, got %+v", r.Labels)
+		}
+	}
+}
+
+func TestMIGInstanceProcessEmitsGPUIID(t *testing.T) {
+	// Same reasoning as the device collector's MIG test: DCGM publishes no
+	// MIG instance UUID on any series, so (gpu_uuid, GPU_I_ID) is the only
+	// key that reaches a DCGM MIG series for per-process attribution too.
+	// Value must be DCGM's own decimal spelling (e.g. "3").
+	dev := fakeProcDevice{uuid: "GPU-parent", mig: true, isMIG: true, migUUID: "MIG-instance", instanceID: 3,
+		procs: []ProcSample{{PID: 101, SMUtil: NotSupported, MemUtil: NotSupported, MemoryBytes: 1000}}}
+	rows := NewProcessCollector([]Device{dev}, resolver).Collect()
+	r := find(t, rows, "nvml_process_gpu_memory_bytes", "pod-a")
+	if r.Labels["GPU_I_ID"] != "3" {
+		t.Fatalf("GPU_I_ID = %q; want \"3\"", r.Labels["GPU_I_ID"])
+	}
+}
+
+func TestNonMIGProcessDeviceHasNoGPUIIDLabel(t *testing.T) {
+	dev := fakeProcDevice{uuid: "GPU-1", procs: []ProcSample{{PID: 101, SMUtil: 30, MemoryBytes: 1000}}}
+	for _, r := range NewProcessCollector([]Device{dev}, resolver).Collect() {
+		if _, present := r.Labels["GPU_I_ID"]; present {
+			t.Fatalf("non-MIG device must not carry a GPU_I_ID key at all, got %+v", r.Labels)
 		}
 	}
 }

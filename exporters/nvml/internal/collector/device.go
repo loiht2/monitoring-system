@@ -26,10 +26,17 @@ type DeviceState struct {
 // StateDevice is the slice of NVML the device collector needs.
 type StateDevice interface {
 	UUID() (string, bool)
-	// MIGUUID reports the MIG instance's own UUID, with ok=false for a
-	// non-MIG handle. UUID() always reports the PHYSICAL device's UUID, even
-	// for a MIG instance (docs-internal/01-architecture.md §3.1).
-	MIGUUID() (string, bool)
+	// MIGInfo reports the MIG instance's own UUID and its GPU instance ID
+	// (NVML GetGpuInstanceId), with ok=false for a non-MIG handle. UUID()
+	// always reports the PHYSICAL device's UUID, even for a MIG instance
+	// (docs-internal/01-architecture.md §3.1).
+	//
+	// Widened from a UUID-only method rather than adding a second accessor:
+	// both values are read from the same MIG instance handle at the same
+	// time and are always either both present or both absent, so one
+	// (value, value, ok) method keeps the interface minimal without forcing
+	// callers to make two calls that must agree.
+	MIGInfo() (uuid string, instanceID int, ok bool)
 	Index() int
 	State() DeviceState
 }
@@ -61,8 +68,16 @@ func (c *DeviceCollector) Collect() []Sample {
 			"gpu":      strconv.Itoa(device.Index()),
 			"node":     c.node,
 		}
-		if migUUID, ok := device.MIGUUID(); ok {
+		if migUUID, instanceID, ok := device.MIGInfo(); ok {
 			base = withLabel(base, "mig_uuid", migUUID)
+			// GPU_I_ID intentionally breaks our snake_case label convention:
+			// it copies DCGM's own spelling verbatim (GPU_I_ID) so a PromQL
+			// join on (gpu_uuid, GPU_I_ID) needs no relabeling on either
+			// side. DCGM never publishes the MIG instance UUID on any
+			// series — it identifies an instance only by GPU_I_ID within
+			// the parent card — so this pair is the only key that reaches a
+			// DCGM MIG series at all.
+			base = withLabel(base, "GPU_I_ID", strconv.Itoa(instanceID))
 		}
 
 		if v, ok := Ratio(s.GPUUtilPercent); ok {

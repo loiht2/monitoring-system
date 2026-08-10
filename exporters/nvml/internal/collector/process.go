@@ -1,5 +1,7 @@
 package collector
 
+import "strconv"
+
 // ProcSample is one process's readings on one device. SMUtil and MemUtil are
 // percentages and MemoryBytes is a byte count; NotSupported marks an absent
 // reading for any of the three.
@@ -14,13 +16,14 @@ type ProcSample struct {
 // of use, so tests need no GPU.
 type Device interface {
 	UUID() (string, bool)
-	// MIGUUID reports the MIG instance's own UUID, with ok=false for a
-	// non-MIG handle. UUID() always reports the PHYSICAL device's UUID, even
-	// for a MIG instance (docs-internal/01-architecture.md §3.1) — per-process
-	// memory is only ever read on the instance handle (see nvmldev.go
-	// Processes()), so this collector needs the same parent/instance split as
-	// the device collector.
-	MIGUUID() (string, bool)
+	// MIGInfo reports the MIG instance's own UUID and its GPU instance ID,
+	// with ok=false for a non-MIG handle. UUID() always reports the
+	// PHYSICAL device's UUID, even for a MIG instance
+	// (docs-internal/01-architecture.md §3.1) — per-process memory is only
+	// ever read on the instance handle (see nvmldev.go Processes()), so
+	// this collector needs the same parent/instance split as the device
+	// collector.
+	MIGInfo() (uuid string, instanceID int, ok bool)
 	MIGEnabled() bool
 	Processes() []ProcSample
 }
@@ -56,7 +59,7 @@ func (c *ProcessCollector) Collect() []Sample {
 			continue
 		}
 		mig := device.MIGEnabled()
-		migUUID, migOK := device.MIGUUID()
+		migUUID, migInstanceID, migOK := device.MIGInfo()
 		totals := make(map[podKey]map[string]float64)
 
 		for _, proc := range device.Processes() {
@@ -99,6 +102,12 @@ func (c *ProcessCollector) Collect() []Sample {
 				}
 				if migOK {
 					labels = withLabel(labels, "mig_uuid", key.migUUID)
+					// GPU_I_ID deliberately breaks our snake_case convention
+					// to match DCGM's spelling verbatim — see device.go for
+					// why: DCGM publishes no MIG instance UUID, so
+					// (gpu_uuid, GPU_I_ID) is the only key that reaches a
+					// DCGM MIG series.
+					labels = withLabel(labels, "GPU_I_ID", strconv.Itoa(migInstanceID))
 				}
 				out = append(out, Sample{Name: name, Value: value, Labels: labels})
 			}

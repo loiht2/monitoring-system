@@ -22,9 +22,13 @@ type nvmlDevice struct {
 	// physical device it belongs to. Empty for both non-MIG devices and the
 	// MIG-enabled parent handle itself. UUID() reports this instead of the
 	// handle's own UUID so gpu_uuid always names the physical device
-	// (docs-internal/01-architecture.md §3.1); MIGUUID() reports the
-	// instance's own UUID.
+	// (docs-internal/01-architecture.md §3.1); MIGInfo() reports the
+	// instance's own UUID and GPU instance ID.
 	parentUUID string
+	// instanceID is the NVML GPU instance ID (GetGpuInstanceId), captured at
+	// discovery time alongside parentUUID so collectors never call back into
+	// NVML. Meaningful only when parentUUID is set.
+	instanceID int
 }
 
 // valueNotAvailable is nvml.h's NVML_VALUE_NOT_AVAILABLE (-1) reinterpreted as
@@ -41,15 +45,18 @@ func (d nvmlDevice) UUID() (string, bool) {
 	return uuid, ret == nvml.SUCCESS
 }
 
-// MIGUUID reports the MIG instance's own UUID, with ok=false for any handle
-// that is not a MIG instance (a non-MIG device, or a MIG-enabled parent
-// handle).
-func (d nvmlDevice) MIGUUID() (string, bool) {
+// MIGInfo reports the MIG instance's own UUID and GPU instance ID, with
+// ok=false for any handle that is not a MIG instance (a non-MIG device, or a
+// MIG-enabled parent handle).
+func (d nvmlDevice) MIGInfo() (string, int, bool) {
 	if d.parentUUID == "" {
-		return "", false
+		return "", 0, false
 	}
 	uuid, ret := d.handle.GetUUID()
-	return uuid, ret == nvml.SUCCESS
+	if ret != nvml.SUCCESS {
+		return "", 0, false
+	}
+	return uuid, d.instanceID, true
 }
 
 func (d nvmlDevice) MIGEnabled() bool { return d.mig }
@@ -235,7 +242,12 @@ func discoverDevices() ([]nvmlDevice, error) {
 				slog.Warn("nvml: skipping MIG instance handle", "index", i, "instance", j, "error", nvml.ErrorString(ret))
 				continue
 			}
-			out = append(out, nvmlDevice{handle: inst, index: i, mig: true, parentUUID: parentUUID})
+			instanceID, ret := inst.GetGpuInstanceId()
+			if ret != nvml.SUCCESS {
+				slog.Warn("nvml: skipping MIG instance handle", "index", i, "instance", j, "error", nvml.ErrorString(ret))
+				continue
+			}
+			out = append(out, nvmlDevice{handle: inst, index: i, mig: true, parentUUID: parentUUID, instanceID: instanceID})
 		}
 	}
 	return out, nil
