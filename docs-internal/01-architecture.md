@@ -111,7 +111,8 @@ exists to find, and what nothing else in the system can express.
 | Key | Joins | Scope |
 |---|---|---|
 | `gpu_uuid` | DCGM ↔ NVML ↔ `gpu_alloc` ↔ `hami_*` | Physical device |
-| `mig_uuid` | DCGM `GPU_I` ↔ `gpu_alloc` | MIG instances |
+| `mig_uuid` | `gpu_alloc` ↔ NVML | MIG instances. **Not a DCGM join key — see below** |
+| `gpu_uuid` + `GPU_I_ID` | DCGM `GPU_I` ↔ everything else | The only way to reach a DCGM MIG series |
 
 The `gpu` label is the board index and is **not** unique: a MIG instance carries its parent board's index. Aggregate on `gpu_uuid`, never on `gpu`.
 | `namespace`, `pod` | NVML ↔ eBPF ↔ `hami_*` ↔ pod-metadata metrics | Workload |
@@ -161,12 +162,15 @@ DCGM_FI_PROF_SM_ACTIVE
   * on(mig_uuid) group_left(namespace, pod) gpu_alloc_device_pod_info{mig_uuid!=""}
 ```
 
-> **Implemented, not yet validated on hardware.** `mig_uuid` is resolved from the NVIDIA DRA driver's
-> ResourceSlice: a device whose `type` is `mig` carries the instance UUID in `uuid` and its physical
-> card in `parentUUID`, so a MIG entitlement populates both labels. The schema comes from the driver's
-> published reference, not from a live probe — MIG is disabled on the validation hardware. The parser
-> skips and logs any device that does not match, so a schema drift degrades to no MIG series rather
-> than to wrong ones.
+> **Validated on hardware, and the join key was wrong.** `mig_uuid` resolution works: the NVIDIA DRA
+driver publishes a MIG device as `type: mig` with the instance in `uuid` and the card in `parentUUID`,
+exactly as implemented, and NVML device series now carry `gpu_uuid`=parent plus `mig_uuid`=instance.
+
+But **DCGM never publishes a MIG instance UUID.** It labels a MIG series with the *parent* card in `UUID`
+plus `GPU_I_ID` and `GPU_I_PROFILE`. So a join `on(mig_uuid)` against DCGM matches nothing, no matter how
+correct our side is. Reaching a DCGM MIG series requires `(gpu_uuid, GPU_I_ID)`, and this exporter does not
+yet emit `GPU_I_ID` — NVML exposes it as the GPU instance ID on the instance handle. Until it does, DCGM
+hardware counters on a MIG instance cannot be attributed to a pod.
 
 Because the authoritative source differs by device mode, a dashboard panel expresses this as a fallback chain,
 not one expression.
