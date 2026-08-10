@@ -124,3 +124,51 @@ is indistinguishable from an idle workload. A ServiceMonitor selects the agent's
 **Capability boundary:** this exporter reports what the workload asked CUDA to do, never what the silicon did.
 The one exception is the elapsed-time family derived from CUDA event timing, which is real on-device time but
 exists only for workloads that call it themselves — a bonus signal, never a dependency.
+
+
+---
+
+## Validation result (a30-node, gpu-burn)
+
+**Working.** Per-pod CUDA tracing is live: kernel-launch rate resolves per pod
+(`gpu-burn-a` 6.47/s, `gpu-burn-b` 6.35/s) on one shared card. No `gpu_cuda_*` or `gpu_hami_*` name survives
+anywhere, so the rename is complete cluster-wide.
+
+### The label names are not `namespace` and `pod`
+
+The agent emits **`k8s_namespace_name`** and **`k8s_pod_name`**. Querying `sum by (namespace, pod)` does not
+fail — it returns a plausible non-zero number attributed to `pod=ebpf-gpu-exporter-…`, because those labels
+come from the *scrape target* rather than the traced workload. Measured: 12.9 launches/s credited to the agent
+pod instead of split across the two workloads that caused them.
+
+That is worse than an empty result. Any per-pod eBPF query must use the `k8s_*` names.
+
+### 7 of 20 families appeared, and gpu-burn is why
+
+| Present | Absent under this workload |
+|---|---|
+| kernel launch calls / duration / grid / block / shared memory, memory copies, memset | device+stream+event sync, event elapsed, graph launch, allocations, frees, peer copies, both `ebpf_hami_*` |
+
+gpu-burn allocates once and then loops kernels, so sync, event, graph and peer-copy probes legitimately never
+fire. **This workload does not validate 13 of the 20 families.** A framework workload (PyTorch) exercises
+allocation, free and stream-sync paths continuously and is what the remaining families need.
+
+### HAMi throttling: instrumented, but nothing to report
+
+`gpu-burn-a` carries `LIBVGPU_LIMITER` and `GPU_CORE_UTILIZATION_POLICY`, so HAMi's interception library *is*
+injected — yet `ebpf_hami_compute_throttle_duration_seconds` never appears. This is the second independent
+signal that HAMi is not enforcing its `cores` grant here; the first was per-pod SM utilization sitting near
+50/50 against a 3:1 grant ([04 § 5](04-exporter-nvml.md)). Two unrelated measurements agreeing is the reason
+to believe it.
+
+### Cardinality against A-5
+
+| | Series |
+|---|---|
+| `ebpf_*` | 168 |
+| `nvml_*` + `DCGM_FI_*` + `gpu_alloc_*` | 97 |
+
+**1.7x, not the assumed order of magnitude** — with two GPU pods. eBPF series scale with instrumented pods
+while the others scale with devices, so the ratio grows with tenancy and this number must be re-measured at
+realistic pod counts before sizing Prometheus. Prometheus RSS at this point: 227 MiB, well inside its 2Gi
+limit.
