@@ -1,0 +1,93 @@
+# Production storage for the Prometheus TSDB.
+#
+# NOT applied on the validation cluster, where `21-prometheus.yaml` has no
+# `storage:` block and the operator falls back to emptyDir — a pod restart there
+# loses history, which is acceptable while building out and is not acceptable in
+# production.
+#
+# Apply this INSTEAD OF the `21-prometheus.yaml` Prometheus object: the operator
+# reconciles one `Prometheus` resource, so the two cannot both be applied.
+#
+# Two rules that are easy to get wrong:
+#
+#   - A TSDB must never sit on a network filesystem. Prometheus mmaps its blocks
+#     and relies on POSIX locking and fsync semantics that NFS, CephFS and SMB do
+#     not reliably provide; the failure mode is silent corruption on restart, not
+#     an error at write time. That is why this pins a `local` volume and a
+#     StorageClass with no provisioner rather than using the cluster default.
+#   - A `local` PersistentVolume is bound to one node by its nodeAffinity. The
+#     Prometheus pod can then only ever schedule there. Size the node's disk for
+#     the retention in `21-prometheus.yaml` (7d / 10GB) plus headroom for
+#     compaction, which transiently needs roughly twice the largest block.
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: gpu-monitoring-local
+# No provisioner: volumes are created by hand below, never dynamically.
+provisioner: kubernetes.io/no-provisioner
+# Bind only once a consumer exists, so the scheduler places the pod against the
+# volume's node affinity instead of binding first and constraining itself later.
+volumeBindingMode: WaitForFirstConsumer
+reclaimPolicy: Retain
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: prometheus-gpu-data
+spec:
+  capacity:
+    # Comfortably above the 10GB retentionSize so compaction has room.
+    storage: 30Gi
+  accessModes: ["ReadWriteOnce"]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: gpu-monitoring-local
+  local:
+    # Must exist on the node and be backed by local disk, not a mount of remote
+    # storage. Create it before applying: mkdir -p and chown to 65534.
+    path: /var/lib/gpu-monitoring/prometheus
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values: ["REPLACE_WITH_NODE_NAME"]
+---
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
+metadata:
+  name: gpu
+  namespace: gpu-monitoring
+spec:
+  serviceAccountName: prometheus-gpu
+  replicas: 1
+  scrapeInterval: 15s
+  retention: 7d
+  retentionSize: 10GB
+  # The operator turns this into a StatefulSet volumeClaimTemplate, so the claim
+  # survives pod replacement and the TSDB is not rebuilt on every rollout.
+  storage:
+    volumeClaimTemplate:
+      spec:
+        storageClassName: gpu-monitoring-local
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 30Gi
+  serviceMonitorSelector:
+    matchLabels:
+      app.kubernetes.io/part-of: gpu-monitoring
+  # podMonitorSelector, probeSelector and scrapeConfigSelector are deliberately
+  # left unset: a nil selector selects nothing, so no unrelated object can join
+  # this Prometheus's target set.
+  resources:
+    requests:
+      memory: 1Gi
+      cpu: 200m
+    limits:
+      memory: 2Gi
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+    fsGroup: 65534
