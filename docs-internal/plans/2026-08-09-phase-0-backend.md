@@ -480,8 +480,10 @@ kubectl -n "$NS" rollout status sts/prometheus-gpu --timeout=180s
 ./scripts/promq.sh 'up'
 ```
 
-Expected: PASS — at least one `up` series (Prometheus scrapes itself).
-If the StatefulSet never appears, the operator is not reconciling; re-check Task 3.
+Expected: PASS — the StatefulSet becomes ready. `up` is **empty at this point and that is correct**: an
+operator-managed Prometheus has no self-scrape ServiceMonitor, and none of ours exist yet, so it has zero
+targets. Use `./scripts/promq.sh 'vector(1)'` to prove the API is serving; the first real `up` series arrives
+in Task 6. If the StatefulSet never appears, the operator is not reconciling; re-check Task 3.
 
 - [ ] **Step 5: Stage and request commit approval**
 
@@ -739,7 +741,12 @@ spec:
 
 ```bash
 kubectl apply -f deploy/a30-node/50-servicemonitor-dcgm.yaml
-sleep 30   # allow the operator to regenerate config and Prometheus to scrape
+# The operator must regenerate the config, Prometheus must reload it, and a
+# scrape must land. 30s was not enough in practice; poll instead of sleeping.
+for _ in $(seq 1 20); do
+  ./scripts/promq.sh 'up{job="nvidia-dcgm-exporter"}' | grep -q . && break
+  sleep 5
+done
 ./scripts/promq.sh 'count(DCGM_FI_DEV_GPU_UTIL) and count(DCGM_FI_DEV_GPU_UTIL{gpu_uuid!="",UUID!=""})'
 ```
 
