@@ -1,0 +1,979 @@
+{
+  "uid": "gpu-hardware",
+  "title": "GPU Hardware (DCGM)",
+  "description": "Hardware counters, one panel per metric. Device-level: says what the silicon did, not who caused it.",
+  "tags": [
+    "gpu",
+    "dcgm"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "refresh": "30s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "DCGM_FI_DEV_CORRECTABLE_REMAPPED_ROWS",
+      "description": "DCGM hardware counter.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "DCGM_FI_DEV_CORRECTABLE_REMAPPED_ROWS",
+          "legendFormat": "{{gpu_uuid}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "DCGM_FI_DEV_DEC_UTIL",
+      "description": "DCGM hardware counter.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "DCGM_FI_DEV_DEC_UTIL",
+          "legendFormat": "{{gpu_uuid}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "DCGM_FI_DEV_ENC_UTIL",
+      "description": "DCGM hardware counter.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 7
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "DCGM_FI_DEV_ENC_UTIL",
+          "legendFormat": "{{gpu_uuid}}"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "DCGM_FI_DEV_FB_FREE",
+      "description": "DCGM hardware counter.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 7
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "deckbytes",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "DCGM_FI_DEV_FB_FREE",
+          "legendFormat": "{{gpu_uuid}}"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "DCGM_FI_DEV_FB_RESERVED",
+      "description": "DCGM hardware counter.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 14
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "deckbytes",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "DCGM_FI_DEV_FB_RESERVED",
+          "legendFormat": "{{gpu_uuid}}"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "DCGM_FI_DEV_FB_TOTAL",
+      "description": "DCGM hardware counter.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 14
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "deckbytes",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "DCGM_FI_DEV_FB_TOTAL",
+          "legendFormat": "{{gpu_uuid}}"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "DCGM_FI_DEV_FB_USED",
+      "description": "DCGM hardware counter.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 21
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "deckbytes",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "DCGM_FI_DEV_FB_USED",
+          "legendFormat": "{{gpu_uuid}}"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "DCGM_FI_DEV_GPU_TEMP",
+      "description": "DCGM hardware counter.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 21
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "DCGM_FI_DEV_GPU_TEMP",
+          "legendFormat": "{{gpu_uuid}}"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "DCGM_FI_DEV_GPU_UTIL",
+      "description": "DCGM hardware counter.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 28
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "DCGM_FI_DEV_GPU_UTIL",
+          "legendFormat": "{{gpu_uuid}}"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "DCGM_FI_DEV_MEMORY_TEMP",
+      "description": "DCGM hardware counter.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 28
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "DCGM_FI_DEV_MEMORY_TEMP",
+          "legendFormat": "{{gpu_uuid}}"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "DCGM_FI_DEV_MEM_CLOCK",
+      "description": "DCGM hardware counter.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 35
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "rothz",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "DCGM_FI_DEV_MEM_CLOCK",
+          "legendFormat": "{{gpu_uuid}}"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "DCGM_FI_DEV_MEM_COPY_UTIL",
+      "description": "DCGM hardware counter.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 35
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "DCGM_FI_DEV_MEM_COPY_UTIL",
+          "legendFormat": "{{gpu_uuid}}"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "DCGM_FI_DEV_PCIE_REPLAY_COUNTER",
+      "description": "DCGM hardware counter.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 42
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "DCGM_FI_DEV_PCIE_REPLAY_COUNTER",
+          "legendFormat": "{{gpu_uuid}}"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "type": "timeseries",
+      "title": "DCGM_FI_DEV_POWER_USAGE",
+      "description": "DCGM hardware counter.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 42
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "DCGM_FI_DEV_POWER_USAGE",
+          "legendFormat": "{{gpu_uuid}}"
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "type": "timeseries",
+      "title": "DCGM_FI_DEV_ROW_REMAP_FAILURE",
+      "description": "DCGM hardware counter.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 49
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "DCGM_FI_DEV_ROW_REMAP_FAILURE",
+          "legendFormat": "{{gpu_uuid}}"
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "type": "timeseries",
+      "title": "DCGM_FI_DEV_SM_CLOCK",
+      "description": "DCGM hardware counter.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 49
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "rothz",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "DCGM_FI_DEV_SM_CLOCK",
+          "legendFormat": "{{gpu_uuid}}"
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "type": "timeseries",
+      "title": "DCGM_FI_DEV_TOTAL_ENERGY_CONSUMPTION",
+      "description": "DCGM hardware counter.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 56
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "DCGM_FI_DEV_TOTAL_ENERGY_CONSUMPTION",
+          "legendFormat": "{{gpu_uuid}}"
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "type": "timeseries",
+      "title": "DCGM_FI_DEV_UNCORRECTABLE_REMAPPED_ROWS",
+      "description": "DCGM hardware counter.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 56
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "DCGM_FI_DEV_UNCORRECTABLE_REMAPPED_ROWS",
+          "legendFormat": "{{gpu_uuid}}"
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "type": "timeseries",
+      "title": "DCGM_FI_DEV_VGPU_LICENSE_STATUS",
+      "description": "DCGM hardware counter.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 63
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "DCGM_FI_DEV_VGPU_LICENSE_STATUS",
+          "legendFormat": "{{gpu_uuid}}"
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "type": "timeseries",
+      "title": "DCGM_FI_PROF_DRAM_ACTIVE",
+      "description": "Device memory interface activity. High DRAM with low SM activity means memory-bound.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 63
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "DCGM_FI_PROF_DRAM_ACTIVE",
+          "legendFormat": "{{gpu_uuid}}"
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "type": "timeseries",
+      "title": "DCGM_FI_PROF_GR_ENGINE_ACTIVE",
+      "description": "Ratio of time the graphics/compute engine was active. Stricter than GPU utilization and the measure that stays valid under MIG.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 70
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "DCGM_FI_PROF_GR_ENGINE_ACTIVE",
+          "legendFormat": "{{gpu_uuid}}"
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "type": "timeseries",
+      "title": "DCGM_FI_PROF_PCIE_RX_BYTES",
+      "description": "DCGM hardware counter.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 70
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "DCGM_FI_PROF_PCIE_RX_BYTES",
+          "legendFormat": "{{gpu_uuid}}"
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "type": "timeseries",
+      "title": "DCGM_FI_PROF_PCIE_TX_BYTES",
+      "description": "DCGM hardware counter.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 77
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "DCGM_FI_PROF_PCIE_TX_BYTES",
+          "legendFormat": "{{gpu_uuid}}"
+        }
+      ]
+    },
+    {
+      "id": 24,
+      "type": "timeseries",
+      "title": "DCGM_FI_PROF_PIPE_FP16_ACTIVE",
+      "description": "DCGM hardware counter.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 77
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "DCGM_FI_PROF_PIPE_FP16_ACTIVE",
+          "legendFormat": "{{gpu_uuid}}"
+        }
+      ]
+    },
+    {
+      "id": 25,
+      "type": "timeseries",
+      "title": "DCGM_FI_PROF_PIPE_FP32_ACTIVE",
+      "description": "DCGM hardware counter.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 84
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "DCGM_FI_PROF_PIPE_FP32_ACTIVE",
+          "legendFormat": "{{gpu_uuid}}"
+        }
+      ]
+    },
+    {
+      "id": 26,
+      "type": "timeseries",
+      "title": "DCGM_FI_PROF_PIPE_FP64_ACTIVE",
+      "description": "DCGM hardware counter.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 84
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "DCGM_FI_PROF_PIPE_FP64_ACTIVE",
+          "legendFormat": "{{gpu_uuid}}"
+        }
+      ]
+    },
+    {
+      "id": 27,
+      "type": "timeseries",
+      "title": "DCGM_FI_PROF_PIPE_TENSOR_ACTIVE",
+      "description": "DCGM hardware counter.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 91
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "DCGM_FI_PROF_PIPE_TENSOR_ACTIVE",
+          "legendFormat": "{{gpu_uuid}}"
+        }
+      ]
+    },
+    {
+      "id": 28,
+      "type": "timeseries",
+      "title": "DCGM_FI_PROF_PIPE_TENSOR_HMMA_ACTIVE",
+      "description": "DCGM hardware counter.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 91
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "DCGM_FI_PROF_PIPE_TENSOR_HMMA_ACTIVE",
+          "legendFormat": "{{gpu_uuid}}"
+        }
+      ]
+    },
+    {
+      "id": 29,
+      "type": "timeseries",
+      "title": "DCGM_FI_PROF_PIPE_TENSOR_IMMA_ACTIVE",
+      "description": "DCGM hardware counter.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 98
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "DCGM_FI_PROF_PIPE_TENSOR_IMMA_ACTIVE",
+          "legendFormat": "{{gpu_uuid}}"
+        }
+      ]
+    },
+    {
+      "id": 30,
+      "type": "timeseries",
+      "title": "DCGM_FI_PROF_SM_ACTIVE",
+      "description": "Fraction of cycles at least one warp was resident on an SM.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 98
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "DCGM_FI_PROF_SM_ACTIVE",
+          "legendFormat": "{{gpu_uuid}}"
+        }
+      ]
+    },
+    {
+      "id": 31,
+      "type": "timeseries",
+      "title": "DCGM_FI_PROF_SM_OCCUPANCY",
+      "description": "Resident warps against the hardware maximum. High occupancy does not imply efficient work.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 105
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "DCGM_FI_PROF_SM_OCCUPANCY",
+          "legendFormat": "{{gpu_uuid}}"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,483 @@
+{
+  "uid": "gpu-cuda",
+  "title": "GPU CUDA Tracing (eBPF)",
+  "description": "Per-pod CUDA API behaviour. Aggregated by k8s_namespace_name/k8s_pod_name.",
+  "tags": [
+    "gpu",
+    "ebpf"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "refresh": "30s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "ebpf_cuda_kernel_block_size_total_count",
+      "description": "Per-pod CUDA API behaviour traced by uprobes. Labels are k8s_namespace_name and k8s_pod_name, NOT namespace/pod \u2014 those describe the scrape target and would attribute every workload to the agent.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum by (k8s_namespace_name, k8s_pod_name) (rate(ebpf_cuda_kernel_block_size_total_count[5m]))",
+          "legendFormat": "{{k8s_namespace_name}}/{{k8s_pod_name}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "ebpf_cuda_kernel_block_size_total_sum",
+      "description": "Per-pod CUDA API behaviour traced by uprobes. Labels are k8s_namespace_name and k8s_pod_name, NOT namespace/pod \u2014 those describe the scrape target and would attribute every workload to the agent.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum by (k8s_namespace_name, k8s_pod_name) (rate(ebpf_cuda_kernel_block_size_total_sum[5m]))",
+          "legendFormat": "{{k8s_namespace_name}}/{{k8s_pod_name}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "ebpf_cuda_kernel_grid_size_total_count",
+      "description": "Per-pod CUDA API behaviour traced by uprobes. Labels are k8s_namespace_name and k8s_pod_name, NOT namespace/pod \u2014 those describe the scrape target and would attribute every workload to the agent.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 7
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum by (k8s_namespace_name, k8s_pod_name) (rate(ebpf_cuda_kernel_grid_size_total_count[5m]))",
+          "legendFormat": "{{k8s_namespace_name}}/{{k8s_pod_name}}"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "ebpf_cuda_kernel_grid_size_total_sum",
+      "description": "Per-pod CUDA API behaviour traced by uprobes. Labels are k8s_namespace_name and k8s_pod_name, NOT namespace/pod \u2014 those describe the scrape target and would attribute every workload to the agent.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 7
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum by (k8s_namespace_name, k8s_pod_name) (rate(ebpf_cuda_kernel_grid_size_total_sum[5m]))",
+          "legendFormat": "{{k8s_namespace_name}}/{{k8s_pod_name}}"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "ebpf_cuda_kernel_launch_calls_total",
+      "description": "Per-pod CUDA API behaviour traced by uprobes. Labels are k8s_namespace_name and k8s_pod_name, NOT namespace/pod \u2014 those describe the scrape target and would attribute every workload to the agent.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 14
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum by (k8s_namespace_name, k8s_pod_name) (rate(ebpf_cuda_kernel_launch_calls_total[5m]))",
+          "legendFormat": "{{k8s_namespace_name}}/{{k8s_pod_name}}"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "ebpf_cuda_kernel_launch_duration_seconds_count",
+      "description": "Per-pod CUDA API behaviour traced by uprobes. Labels are k8s_namespace_name and k8s_pod_name, NOT namespace/pod \u2014 those describe the scrape target and would attribute every workload to the agent.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 14
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum by (k8s_namespace_name, k8s_pod_name) (rate(ebpf_cuda_kernel_launch_duration_seconds_count[5m]))",
+          "legendFormat": "{{k8s_namespace_name}}/{{k8s_pod_name}}"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "ebpf_cuda_kernel_launch_duration_seconds_sum",
+      "description": "Per-pod CUDA API behaviour traced by uprobes. Labels are k8s_namespace_name and k8s_pod_name, NOT namespace/pod \u2014 those describe the scrape target and would attribute every workload to the agent.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 21
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum by (k8s_namespace_name, k8s_pod_name) (rate(ebpf_cuda_kernel_launch_duration_seconds_sum[5m]))",
+          "legendFormat": "{{k8s_namespace_name}}/{{k8s_pod_name}}"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "ebpf_cuda_kernel_shared_memory_bytes_count",
+      "description": "Per-pod CUDA API behaviour traced by uprobes. Labels are k8s_namespace_name and k8s_pod_name, NOT namespace/pod \u2014 those describe the scrape target and would attribute every workload to the agent.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 21
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum by (k8s_namespace_name, k8s_pod_name) (rate(ebpf_cuda_kernel_shared_memory_bytes_count[5m]))",
+          "legendFormat": "{{k8s_namespace_name}}/{{k8s_pod_name}}"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "ebpf_cuda_kernel_shared_memory_bytes_sum",
+      "description": "Per-pod CUDA API behaviour traced by uprobes. Labels are k8s_namespace_name and k8s_pod_name, NOT namespace/pod \u2014 those describe the scrape target and would attribute every workload to the agent.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 28
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum by (k8s_namespace_name, k8s_pod_name) (rate(ebpf_cuda_kernel_shared_memory_bytes_sum[5m]))",
+          "legendFormat": "{{k8s_namespace_name}}/{{k8s_pod_name}}"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "ebpf_cuda_memory_copies_bytes_total_count",
+      "description": "Per-pod CUDA API behaviour traced by uprobes. Labels are k8s_namespace_name and k8s_pod_name, NOT namespace/pod \u2014 those describe the scrape target and would attribute every workload to the agent.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 28
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum by (k8s_namespace_name, k8s_pod_name) (rate(ebpf_cuda_memory_copies_bytes_total_count[5m]))",
+          "legendFormat": "{{k8s_namespace_name}}/{{k8s_pod_name}}"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "ebpf_cuda_memory_copies_bytes_total_sum",
+      "description": "Per-pod CUDA API behaviour traced by uprobes. Labels are k8s_namespace_name and k8s_pod_name, NOT namespace/pod \u2014 those describe the scrape target and would attribute every workload to the agent.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 35
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum by (k8s_namespace_name, k8s_pod_name) (rate(ebpf_cuda_memory_copies_bytes_total_sum[5m]))",
+          "legendFormat": "{{k8s_namespace_name}}/{{k8s_pod_name}}"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "ebpf_cuda_memory_memset_bytes_total_count",
+      "description": "Per-pod CUDA API behaviour traced by uprobes. Labels are k8s_namespace_name and k8s_pod_name, NOT namespace/pod \u2014 those describe the scrape target and would attribute every workload to the agent.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 35
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum by (k8s_namespace_name, k8s_pod_name) (rate(ebpf_cuda_memory_memset_bytes_total_count[5m]))",
+          "legendFormat": "{{k8s_namespace_name}}/{{k8s_pod_name}}"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "ebpf_cuda_memory_memset_bytes_total_sum",
+      "description": "Per-pod CUDA API behaviour traced by uprobes. Labels are k8s_namespace_name and k8s_pod_name, NOT namespace/pod \u2014 those describe the scrape target and would attribute every workload to the agent.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 42
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum by (k8s_namespace_name, k8s_pod_name) (rate(ebpf_cuda_memory_memset_bytes_total_sum[5m]))",
+          "legendFormat": "{{k8s_namespace_name}}/{{k8s_pod_name}}"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "type": "timeseries",
+      "title": "ebpf_cuda_stream_sync_duration_seconds_count",
+      "description": "Per-pod CUDA API behaviour traced by uprobes. Labels are k8s_namespace_name and k8s_pod_name, NOT namespace/pod \u2014 those describe the scrape target and would attribute every workload to the agent.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 42
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum by (k8s_namespace_name, k8s_pod_name) (rate(ebpf_cuda_stream_sync_duration_seconds_count[5m]))",
+          "legendFormat": "{{k8s_namespace_name}}/{{k8s_pod_name}}"
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "type": "timeseries",
+      "title": "ebpf_cuda_stream_sync_duration_seconds_sum",
+      "description": "Per-pod CUDA API behaviour traced by uprobes. Labels are k8s_namespace_name and k8s_pod_name, NOT namespace/pod \u2014 those describe the scrape target and would attribute every workload to the agent.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 49
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum by (k8s_namespace_name, k8s_pod_name) (rate(ebpf_cuda_stream_sync_duration_seconds_sum[5m]))",
+          "legendFormat": "{{k8s_namespace_name}}/{{k8s_pod_name}}"
+        }
+      ]
+    }
+  ]
+}

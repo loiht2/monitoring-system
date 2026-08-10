@@ -75,12 +75,17 @@ spec:
               mountPath: /etc/grafana/provisioning/datasources
             - name: dashboard-provider
               mountPath: /etc/grafana/provisioning/dashboards
-            - name: dashboards
-              mountPath: /var/lib/grafana/dashboards
-            # Each dashboard ConfigMap needs its own mount: the provider scans
-            # the directory, but a configMap volume replaces the whole path
-            # rather than merging, so a second dashboard added to the same
-            # mount would hide the first.
+            # One mount per dashboard ConfigMap: a configMap volume replaces
+            # the whole path rather than merging, so a second dashboard added
+            # to one mount would hide the first.
+            - name: dash-gpu-hardware
+              mountPath: /var/lib/grafana/dashboards/gpu-hardware
+            - name: dash-gpu-per-pod
+              mountPath: /var/lib/grafana/dashboards/gpu-per-pod
+            - name: dash-gpu-allocation
+              mountPath: /var/lib/grafana/dashboards/gpu-allocation
+            - name: dash-gpu-cuda
+              mountPath: /var/lib/grafana/dashboards/gpu-cuda
             - name: dashboards-ebpf
               mountPath: /var/lib/grafana/dashboards/ebpf
             - name: storage
@@ -97,9 +102,21 @@ spec:
         - name: dashboard-provider
           configMap:
             name: grafana-dashboard-provider
-        - name: dashboards
+        - name: dash-gpu-hardware
           configMap:
-            name: grafana-dashboard-gpu-compute
+            name: grafana-dashboard-gpu-hardware
+            optional: true
+        - name: dash-gpu-per-pod
+          configMap:
+            name: grafana-dashboard-gpu-per-pod
+            optional: true
+        - name: dash-gpu-allocation
+          configMap:
+            name: grafana-dashboard-gpu-allocation
+            optional: true
+        - name: dash-gpu-cuda
+          configMap:
+            name: grafana-dashboard-gpu-cuda
             optional: true
         - name: dashboards-ebpf
           configMap:

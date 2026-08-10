@@ -1,0 +1,115 @@
+{
+  "uid": "gpu-allocation",
+  "title": "GPU Allocation & Support",
+  "description": "Who is entitled to which device, and which metrics each GPU can actually produce.",
+  "tags": [
+    "gpu",
+    "alloc"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "refresh": "30s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "gpu_metric_supported",
+      "description": "1 supported, 0 definitively not supported on this GPU, absent when unknown.",
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "gpu_metric_supported",
+          "legendFormat": "{{gpu_uuid}}"
+        }
+      ]
+    },
+    {
+      "id": 90,
+      "type": "table",
+      "title": "Metric support matrix",
+      "description": "Which metrics each GPU can actually produce. 'Not supported on this GPU' is a hardware or driver limitation, not a fault. A metric absent from this table has UNKNOWN support: the exporter could not determine it and nothing is claimed. Use this before concluding an empty panel is broken.",
+      "gridPos": {
+        "h": 14,
+        "w": 24,
+        "x": 0,
+        "y": 7
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "targets": [
+        {
+          "expr": "gpu_metric_supported",
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "job": true,
+              "instance": true,
+              "namespace": true,
+              "pod": true,
+              "service": true,
+              "container": true,
+              "endpoint": true,
+              "node": true,
+              "gpu": true,
+              "GPU_I_ID": true
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Not supported on this GPU",
+                  "color": "text",
+                  "index": 0
+                },
+                "1": {
+                  "text": "Supported",
+                  "color": "green",
+                  "index": 1
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      }
+    }
+  ]
+}

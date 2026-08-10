@@ -172,3 +172,25 @@ to believe it.
 while the others scale with devices, so the ratio grows with tenancy and this number must be re-measured at
 realistic pod counts before sizing Prometheus. Prometheus RSS at this point: 227 MiB, well inside its 2Gi
 limit.
+
+
+### Real training workload (resnet50 + shufflenet_v2, HAMi co-scheduled)
+
+Re-run against the DL benchmark harness rather than gpu-burn, because gpu-burn exercises only a narrow slice
+of the CUDA API.
+
+| | gpu-burn | + real training |
+|---|---|---|
+| Families with data | 7 of 20 | **8 of 20** |
+| Gained | | `ebpf_cuda_stream_sync_duration_seconds` |
+
+Per-pod attribution held on the training pods (977k and 1.16M kernel launches over the run).
+
+**The allocation and free families stayed absent, and that is expected rather than broken.** PyTorch uses a
+caching allocator: it takes a small number of large `cudaMalloc` calls during warm-up and then reuses that
+arena for the rest of training, so steady-state has almost nothing for those probes to see. Catching them
+needs a workload that allocates continuously, or a measurement taken across process start.
+
+Still unobserved after both workloads: device and event sync, event elapsed, graph launch, peer copies, CUDA
+errors, and both `ebpf_hami_*` families. The HAMi families remaining empty under a `force` throttle policy is
+the third independent signal that HAMi is not enforcing its grant here.
