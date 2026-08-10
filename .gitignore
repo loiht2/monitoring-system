@@ -19,3 +19,6 @@ kubeconfig
 *.kubeconfig
 snapshots/
 .worktrees/
+
+# Validation baselines: machine- and run-specific measurements, not spec.
+baselines/
