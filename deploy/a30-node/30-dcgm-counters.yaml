@@ -41,5 +41,7 @@ data:
     DCGM_FI_PROF_PIPE_FP64_ACTIVE,           gauge, Ratio of cycles the non-tensor FP64 pipe is active.
     DCGM_FI_PROF_PIPE_FP32_ACTIVE,           gauge, Ratio of cycles the non-tensor FP32 pipe is active.
     DCGM_FI_PROF_PIPE_FP16_ACTIVE,           gauge, Ratio of cycles the non-tensor FP16 pipe is active.
-    DCGM_FI_PROF_PIPE_INT_ACTIVE,            gauge, Ratio of cycles the integer pipe is active.
-    DCGM_FI_PROF_DMMA_CYCLES_ACTIVE_TOTAL,   counter, Cycles the DMMA (FP64 matrix) pipe was active.
+    # DCGM_FI_PROF_PIPE_INT_ACTIVE and DCGM_FI_PROF_DMMA_CYCLES_ACTIVE_TOTAL are NOT
+    # collected here. INT logs 'metric not enabled' on this hardware, and DMMA is not a
+    # known field in this DCGM build at all — an unknown field is FATAL, not skipped:
+    # the exporter serves nothing, so one bad line silently drops every other field.
