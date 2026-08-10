@@ -29,7 +29,7 @@ Prometheus.
 | `dcgm-exporter` | **Configuration only.** Never redeployed or forked — a second instance emits duplicate series for every name, violating the hard invariant | unchanged | `DCGM_FI_*` |
 | `nvml-exporter` | New DaemonSet, Go | `hostPID: true`, read-only K8s API | `nvml_*`, `gpu_alloc_*` |
 | `ebpf-gpu-exporter` | New DaemonSet, Go | privileged, `hostPID`, `hostNetwork` | `ebpf_cuda_*`, `ebpf_hami_*` |
-| `vgpu-monitor` | **Not deployed by us.** Scraped where present | n/a | `hami_*` |
+| `hami-dra-monitor` | **Not deployed by us.** Scraped where present | n/a | `GPUDevice*` |
 
 `gpu_alloc_*` lives **inside** the NVML exporter: it is node-local, needs the same pod cache the PID resolver
 maintains, and shares its lifecycle. It stays a separate collector module with its own metric family, so it is
@@ -110,12 +110,12 @@ exists to find, and what nothing else in the system can express.
 
 | Key | Joins | Scope |
 |---|---|---|
-| `gpu_uuid` | DCGM ↔ NVML ↔ `gpu_alloc` ↔ `hami_*` | Physical device |
+| `gpu_uuid` | DCGM ↔ NVML ↔ `gpu_alloc` ↔ eBPF ↔ HAMi | Physical device |
 | `mig_uuid` | `gpu_alloc` ↔ NVML | MIG instances. **Not a DCGM join key — see below** |
 | `gpu_uuid` + `GPU_I_ID` | DCGM `GPU_I` ↔ everything else | The only way to reach a DCGM MIG series |
 
 The `gpu` label is the board index and is **not** unique: a MIG instance carries its parent board's index. Aggregate on `gpu_uuid`, never on `gpu`.
-| `namespace`, `pod` | NVML ↔ eBPF ↔ `hami_*` ↔ pod-metadata metrics | Workload |
+| `namespace`, `pod` | NVML ↔ pod-metadata metrics | Workload. **eBPF uses `k8s_namespace_name`/`k8s_pod_name`** |
 
 ### 3.2 Normalization — add, never rename
 
@@ -124,7 +124,7 @@ Relabeling **copies** each source's native identifier into `gpu_uuid` and **reta
 | Source | Native label | Action |
 |---|---|---|
 | DCGM | `UUID` | copy → `gpu_uuid`, keep `UUID` |
-| vGPUmonitor | `device_uuid` | copy → `gpu_uuid`, keep `device_uuid` |
+| HAMi dra-monitor | `deviceuuid` | copy → `gpu_uuid`, keep `deviceuuid` |
 | NVML / `gpu_alloc` | `gpu_uuid` | native |
 
 **This is the canonical statement of the rule.** Dropping an original label breaks any query, dashboard or
@@ -138,7 +138,7 @@ which match on the full label set and degrade to an empty vector rather than to 
 DCGM_FI_*                  dcgm-exporter
 nvml_*  gpu_alloc_*        nvml-exporter
 ebpf_cuda_*  ebpf_hami_*   ebpf-gpu-exporter
-hami_*                     HAMi vgpu-monitor (not ours)
+GPUDevice*                 HAMi dra-monitor (not ours)
 ```
 
 The eBPF agent also emits its upstream framework's HTTP/RPC/DB/DNS metrics under their own names; those are
@@ -206,8 +206,12 @@ count by (gpu_uuid) (gpu_alloc_device_pod_info) > 1
 defect, which is why this overlap is kept ([06 § 4](06-hami-vgpumonitor.md)):
 
 ```promql
-nvml_gpu_memory_used_bytes - on(gpu_uuid) sum by (gpu_uuid) (hami_vgpu_memory_used_bytes)
+nvml_gpu_memory_used_bytes
+  - on(gpu_uuid) (GPUDeviceMemoryAllocated * 1024 * 1024)
 ```
+
+HAMi reports MiB, so the conversion is required. This is now a **device-level** comparison: HAMi 2.9.0's
+dra-monitor publishes no per-container figures, so the per-container version of this check is not available.
 
 ---
 

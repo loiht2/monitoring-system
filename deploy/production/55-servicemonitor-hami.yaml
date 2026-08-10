@@ -1,0 +1,52 @@
+# The fourth source: HAMi's own accounting, scraped where it already runs.
+#
+# HAMi 2.9.0 ships this as a standalone `hami-dra-monitor` Deployment, NOT as the
+# vgpu-monitor sidecar inside the device-plugin pod that older charts used. It
+# exposes four DEVICE-level metrics and no per-container ones:
+#
+#   GPUDeviceCoreAllocated    percent of the card HAMi has handed out
+#   GPUDeviceCoreLimit        percent it considers available (100)
+#   GPUDeviceMemoryAllocated  MiB it has handed out
+#   GPUDeviceMemoryLimit      MiB it considers available
+#
+# Names are kept exactly as HAMi emits them, unprefixed CamelCase and all, so
+# that anything an operator reads in HAMi's own docs or issues matches what is
+# in Prometheus. This is the one documented exception to prefix-by-source
+# (D-12). It is safe under the hard invariant, which forbids two *producers* of
+# one name, not names in a foreign style.
+#
+# Memory is MiB. Any comparison against nvml_gpu_memory_used_bytes must convert:
+#   GPUDeviceMemoryAllocated * 1024 * 1024
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: gpu-hami
+  namespace: gpu-monitoring
+  labels:
+    app.kubernetes.io/part-of: gpu-monitoring   # matched by the Prometheus CR
+spec:
+  namespaceSelector:
+    matchNames: ["REPLACE_WITH_HAMI_NAMESPACE"]
+  selector:
+    # Verified against the live Service. The chart labels it name=hami with
+    # component=monitor; name=hami-dra-monitor looks obvious and matches
+    # nothing, and a ServiceMonitor that matches nothing applies cleanly and
+    # scrapes silently.
+    matchLabels:
+      app.kubernetes.io/name: hami
+      app.kubernetes.io/component: monitor
+  endpoints:
+    - port: metrics
+      interval: 15s
+      honorLabels: true
+      metricRelabelings:
+        # Copy, never rename. deviceuuid is HAMi's native identifier and holds
+        # the same physical GPU UUID as every other source, so copying it into
+        # gpu_uuid makes HAMi joinable with DCGM, NVML and eBPF while leaving
+        # the original label intact for anyone following HAMi's own docs.
+        - sourceLabels: [deviceuuid]
+          targetLabel: gpu_uuid
+          action: replace
+        - sourceLabels: [nodeid]
+          targetLabel: node
+          action: replace

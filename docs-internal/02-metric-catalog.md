@@ -289,9 +289,9 @@ of it.
 
 | Concept | Sources | What disagreement means |
 |---|---|---|
-| Per-container GPU memory | `nvml_process_gpu_memory_bytes` vs `hami_vgpu_memory_used_bytes` | Memory on the card that HAMi is not counting toward its limit |
-| Per-container utilization | `nvml_process_sm_utilization_ratio` vs `hami_container_device_utilization_ratio` | HAMi's sampling disagrees with the driver's — it is throttling against the wrong number |
-| Idleness | `nvml_process_*` absent, `hami_container_last_kernel_elapsed_seconds` large, `ebpf_cuda_kernel_launch_calls_total` flat | Three independent idle signals; agreement across them is what makes automated reclamation safe |
+| Device memory accounting | `nvml_gpu_memory_used_bytes` vs `GPUDeviceMemoryAllocated * 1048576` | Memory the card holds that HAMi is not counting. **Device-level only** — 2.9.0's dra-monitor has no per-container figures |
+| Compute accounting | `sum by (gpu_uuid) (nvml_process_sm_utilization_ratio) * 100` vs `GPUDeviceCoreAllocated` | What HAMi handed out against what the driver observes being used |
+| Idleness | `nvml_process_*` absent, `GPUDeviceCoreAllocated` non-zero, `ebpf_cuda_kernel_launch_calls_total` flat | Entitled but doing nothing. HAMi 2.9.0 exposes no last-kernel timestamp, so that third signal is gone |
 
 
 ---

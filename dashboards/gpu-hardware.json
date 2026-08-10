@@ -1,7 +1,7 @@
 {
   "uid": "gpu-hardware",
   "title": "GPU Hardware",
-  "description": "What the silicon is doing, who holds it, and whether it is healthy — merging DCGM, NVML and allocation into one view that never says which exporter a number came from. MIG-partitioned cards report both a whole-device and a per-instance reading for memory; panels that compare across GPUs use the whole-device reading only (mig_uuid=\"\") to avoid double-counting a partitioned card, with the instance-scoped reading broken out in its own panel in the Memory row.",
+  "description": "What the silicon is doing, who holds it, and whether it is healthy \u2014 merging DCGM, NVML and allocation into one view that never says which exporter a number came from. MIG-partitioned cards report both a whole-device and a per-instance reading for memory; panels that compare across GPUs use the whole-device reading only (mig_uuid=\"\") to avoid double-counting a partitioned card, with the instance-scoped reading broken out in its own panel in the Memory row.",
   "tags": [
     "gpu",
     "hardware"
@@ -110,7 +110,7 @@
       "id": 3,
       "type": "stat",
       "title": "Pods Holding a GPU",
-      "description": "Distinct pods with an active entitlement to a device or MIG instance right now (gpu_alloc_device_pod_info), whether or not they are actually computing. Empty means no pod currently holds a GPU on this node — check the Allocation & Support row for the raw entitlement rows before assuming this panel is broken.",
+      "description": "Distinct pods with an active entitlement to a device or MIG instance right now (gpu_alloc_device_pod_info), whether or not they are actually computing. Empty means no pod currently holds a GPU on this node \u2014 check the Allocation & Support row for the raw entitlement rows before assuming this panel is broken.",
       "gridPos": {
         "h": 4,
         "w": 6,
@@ -282,8 +282,8 @@
         {
           "id": 6,
           "type": "gauge",
-          "title": "GPU Busy — Current",
-          "description": "Fraction of the last sampling period one or more kernels were executing on the whole device (NVML, the catalog's designated source for device busy — nothing new is built on DCGM's equivalent field here). Reads as no data for a GPU that has any MIG instance carved out of it: the whole-device reading becomes undefined once the card is partitioned. See Graphics/Compute Engine Active for a measure that keeps working under MIG. The colour bands here are an informational scale, not a warning — high busy is normal and desired.",
+          "title": "GPU Busy \u2014 Current",
+          "description": "Fraction of the last sampling period one or more kernels were executing on the whole device (NVML, the catalog's designated source for device busy \u2014 nothing new is built on DCGM's equivalent field here). Reads as no data for a GPU that has any MIG instance carved out of it: the whole-device reading becomes undefined once the card is partitioned. See Graphics/Compute Engine Active for a measure that keeps working under MIG. The colour bands here are an informational scale, not a warning \u2014 high busy is normal and desired.",
           "gridPos": {
             "h": 8,
             "w": 6,
@@ -343,7 +343,7 @@
           "id": 7,
           "type": "timeseries",
           "title": "Engine & SM Activity",
-          "description": "Two engine-level activity ratios, both MIG-safe (unlike plain GPU busy, which disappears once a card is partitioned). Graphics/Compute Engine Active is the stricter of the two. SM Active is 0.5-ambiguous — that could mean half the SMs fully busy or all SMs half busy. On a MIG instance both ratios are relative to that instance's own SM count, never the whole card: a saturated 14-of-56-SM instance measured on this fleet read ~1.0 here while three quarters of the physical card sat idle — do not read a MIG line on this chart as ‘the card is this busy’.",
+          "description": "Two engine-level activity ratios, both MIG-safe (unlike plain GPU busy, which disappears once a card is partitioned). Graphics/Compute Engine Active is the stricter of the two. SM Active is 0.5-ambiguous \u2014 that could mean half the SMs fully busy or all SMs half busy. On a MIG instance both ratios are relative to that instance's own SM count, never the whole card: a saturated 14-of-56-SM instance measured on this fleet read ~1.0 here while three quarters of the physical card sat idle \u2014 do not read a MIG line on this chart as \u2018the card is this busy\u2019.",
           "gridPos": {
             "h": 8,
             "w": 9,
@@ -366,11 +366,11 @@
           "targets": [
             {
               "expr": "DCGM_FI_PROF_GR_ENGINE_ACTIVE{gpu_uuid=~\"$gpu\"}",
-              "legendFormat": "{{node}} gpu{{gpu}} · graphics/compute engine"
+              "legendFormat": "{{node}} gpu{{gpu}} \u00b7 graphics/compute engine"
             },
             {
               "expr": "DCGM_FI_PROF_SM_ACTIVE{gpu_uuid=~\"$gpu\"}",
-              "legendFormat": "{{node}} gpu{{gpu}} · SM active"
+              "legendFormat": "{{node}} gpu{{gpu}} \u00b7 SM active"
             }
           ]
         },
@@ -378,7 +378,7 @@
           "id": 8,
           "type": "timeseries",
           "title": "SM Occupancy",
-          "description": "Resident warps against the hardware maximum. High occupancy does not imply useful work — a kernel can fill the SMs and still be memory-bound. Like the engine-activity panel, an instance's occupancy is relative to its own SM allocation under MIG, not the whole card.",
+          "description": "Resident warps against the hardware maximum. High occupancy does not imply useful work \u2014 a kernel can fill the SMs and still be memory-bound. Like the engine-activity panel, an instance's occupancy is relative to its own SM allocation under MIG, not the whole card.",
           "gridPos": {
             "h": 8,
             "w": 9,
@@ -409,7 +409,7 @@
           "id": 9,
           "type": "timeseries",
           "title": "Tensor & Precision Pipe Activity",
-          "description": "Which arithmetic pipes the GPU is actually using: tensor cores overall, split into FP16/BF16 (HMMA) and INT8 (IMMA) matrix ops, plus the non-tensor FP64/FP32/FP16 pipes. High FP32 with low tensor activity during training usually means mixed precision is not engaged. These are DCGM's profiling counters — there is no NVML alternative below Hopper's GPM family, which this fleet does not have.",
+          "description": "Which arithmetic pipes the GPU is actually using: tensor cores overall, split into FP16/BF16 (HMMA) and INT8 (IMMA) matrix ops, plus the non-tensor FP64/FP32/FP16 pipes. High FP32 with low tensor activity during training usually means mixed precision is not engaged. These are DCGM's profiling counters \u2014 there is no NVML alternative below Hopper's GPM family, which this fleet does not have.",
           "gridPos": {
             "h": 9,
             "w": 24,
@@ -432,27 +432,27 @@
           "targets": [
             {
               "expr": "DCGM_FI_PROF_PIPE_TENSOR_ACTIVE{gpu_uuid=~\"$gpu\"}",
-              "legendFormat": "{{node}} gpu{{gpu}} · tensor (all)"
+              "legendFormat": "{{node}} gpu{{gpu}} \u00b7 tensor (all)"
             },
             {
               "expr": "DCGM_FI_PROF_PIPE_TENSOR_HMMA_ACTIVE{gpu_uuid=~\"$gpu\"}",
-              "legendFormat": "{{node}} gpu{{gpu}} · tensor FP16/BF16 (HMMA)"
+              "legendFormat": "{{node}} gpu{{gpu}} \u00b7 tensor FP16/BF16 (HMMA)"
             },
             {
               "expr": "DCGM_FI_PROF_PIPE_TENSOR_IMMA_ACTIVE{gpu_uuid=~\"$gpu\"}",
-              "legendFormat": "{{node}} gpu{{gpu}} · tensor INT8 (IMMA)"
+              "legendFormat": "{{node}} gpu{{gpu}} \u00b7 tensor INT8 (IMMA)"
             },
             {
               "expr": "DCGM_FI_PROF_PIPE_FP64_ACTIVE{gpu_uuid=~\"$gpu\"}",
-              "legendFormat": "{{node}} gpu{{gpu}} · FP64"
+              "legendFormat": "{{node}} gpu{{gpu}} \u00b7 FP64"
             },
             {
               "expr": "DCGM_FI_PROF_PIPE_FP32_ACTIVE{gpu_uuid=~\"$gpu\"}",
-              "legendFormat": "{{node}} gpu{{gpu}} · FP32"
+              "legendFormat": "{{node}} gpu{{gpu}} \u00b7 FP32"
             },
             {
               "expr": "DCGM_FI_PROF_PIPE_FP16_ACTIVE{gpu_uuid=~\"$gpu\"}",
-              "legendFormat": "{{node}} gpu{{gpu}} · FP16"
+              "legendFormat": "{{node}} gpu{{gpu}} \u00b7 FP16"
             }
           ]
         }
@@ -474,7 +474,7 @@
           "id": 11,
           "type": "bargauge",
           "title": "Memory Used vs Total, per GPU",
-          "description": "Fraction of each physical card's memory currently allocated (NVML, the catalog's designated source). Filtered to the whole-card reading only (mig_uuid=\"\") — NVML also emits a second, smaller reading scoped to a MIG instance under the SAME gpu_uuid, and adding the two together would count the same silicon's memory twice and produce a total larger than the card's real capacity. The instance-scoped reading is broken out on its own in the panel below.",
+          "description": "Fraction of each physical card's memory currently allocated (NVML, the catalog's designated source). Filtered to the whole-card reading only (mig_uuid=\"\") \u2014 NVML also emits a second, smaller reading scoped to a MIG instance under the SAME gpu_uuid, and adding the two together would count the same silicon's memory twice and produce a total larger than the card's real capacity. The instance-scoped reading is broken out on its own in the panel below.",
           "gridPos": {
             "h": 8,
             "w": 8,
@@ -534,7 +534,7 @@
           "id": 12,
           "type": "timeseries",
           "title": "Memory Used Over Time",
-          "description": "Whole-card memory in use against installed capacity, trended. Same mig_uuid=\"\" filter as the panel to the left, for the same double-counting reason — see its description.",
+          "description": "Whole-card memory in use against installed capacity, trended. Same mig_uuid=\"\" filter as the panel to the left, for the same double-counting reason \u2014 see its description.",
           "gridPos": {
             "h": 8,
             "w": 16,
@@ -557,11 +557,11 @@
           "targets": [
             {
               "expr": "nvml_gpu_memory_used_bytes{gpu_uuid=~\"$gpu\", mig_uuid=\"\"}",
-              "legendFormat": "{{node}} gpu{{gpu}} · used"
+              "legendFormat": "{{node}} gpu{{gpu}} \u00b7 used"
             },
             {
               "expr": "nvml_gpu_memory_total_bytes{gpu_uuid=~\"$gpu\", mig_uuid=\"\"}",
-              "legendFormat": "{{node}} gpu{{gpu}} · total"
+              "legendFormat": "{{node}} gpu{{gpu}} \u00b7 total"
             }
           ]
         },
@@ -569,7 +569,7 @@
           "id": 13,
           "type": "timeseries",
           "title": "Memory Used / Total, MIG-Aware",
-          "description": "Framebuffer memory as the profiling source reports it, converted from its native MiB to bytes for consistent units with the rest of this dashboard. Off MIG this matches the whole-card figure to the left almost exactly. Once a MIG instance exists on a card, this is re-scoped to that instance automatically — so it is the number that reflects what a tenant can actually use, unlike the whole-card figure to the left, which keeps counting the full card even after most of it has been sliced away to instances.",
+          "description": "Framebuffer memory as the profiling source reports it, converted from its native MiB to bytes for consistent units with the rest of this dashboard. Off MIG this matches the whole-card figure to the left almost exactly. Once a MIG instance exists on a card, this is re-scoped to that instance automatically \u2014 so it is the number that reflects what a tenant can actually use, unlike the whole-card figure to the left, which keeps counting the full card even after most of it has been sliced away to instances.",
           "gridPos": {
             "h": 8,
             "w": 12,
@@ -592,11 +592,11 @@
           "targets": [
             {
               "expr": "DCGM_FI_DEV_FB_USED{gpu_uuid=~\"$gpu\"} * 1048576",
-              "legendFormat": "{{node}} gpu{{gpu}} · used"
+              "legendFormat": "{{node}} gpu{{gpu}} \u00b7 used"
             },
             {
               "expr": "DCGM_FI_DEV_FB_TOTAL{gpu_uuid=~\"$gpu\"} * 1048576",
-              "legendFormat": "{{node}} gpu{{gpu}} · total"
+              "legendFormat": "{{node}} gpu{{gpu}} \u00b7 total"
             }
           ]
         },
@@ -604,7 +604,7 @@
           "id": 14,
           "type": "timeseries",
           "title": "Memory Held by Each Pod",
-          "description": "Device memory currently held by each pod's own CUDA processes (NVML, per-process — the only per-process metric that survives MIG intact). Empty whenever no pod is actively running CUDA on a GPU; check the Allocation & Support row to see who merely holds a device without using it.",
+          "description": "Device memory currently held by each pod's own CUDA processes (NVML, per-process \u2014 the only per-process metric that survives MIG intact). Empty whenever no pod is actively running CUDA on a GPU; check the Allocation & Support row to see who merely holds a device without using it.",
           "gridPos": {
             "h": 8,
             "w": 12,
@@ -648,8 +648,8 @@
         {
           "id": 16,
           "type": "gauge",
-          "title": "Power Draw — Current",
-          "description": "Instantaneous board power per GPU. NVML is the designated source; DCGM collects an equivalent legacy field but this dashboard does not query it. Scaled to the A30's 165 W board power limit — adjust the max if the fleet grows a different card model.",
+          "title": "Power Draw \u2014 Current",
+          "description": "Instantaneous board power per GPU. NVML is the designated source; DCGM collects an equivalent legacy field but this dashboard does not query it. Scaled to the A30's 165 W board power limit \u2014 adjust the max if the fleet grows a different card model.",
           "gridPos": {
             "h": 8,
             "w": 6,
@@ -708,7 +708,7 @@
         {
           "id": 17,
           "type": "gauge",
-          "title": "Temperature — Current",
+          "title": "Temperature \u2014 Current",
           "description": "Core temperature per GPU. NVML is the designated source; DCGM's equivalent legacy field is not queried here. The scale is a generic caution/danger band for any datacenter GPU, not a model-specific spec limit.",
           "gridPos": {
             "h": 8,
@@ -769,7 +769,7 @@
           "id": 18,
           "type": "timeseries",
           "title": "Power Draw Over Time",
-          "description": "Per-GPU board power, trended. Same NVML source as the current-value gauge; useful for spotting a job that ramps up compute without the tensor pipes ever engaging — power rises while Tensor & Precision Pipe Activity (Utilization row) stays flat.",
+          "description": "Per-GPU board power, trended. Same NVML source as the current-value gauge; useful for spotting a job that ramps up compute without the tensor pipes ever engaging \u2014 power rises while Tensor & Precision Pipe Activity (Utilization row) stays flat.",
           "gridPos": {
             "h": 8,
             "w": 6,
@@ -800,7 +800,7 @@
           "id": 19,
           "type": "timeseries",
           "title": "Temperature Over Time",
-          "description": "Per-GPU core temperature, trended against the throttle reasons below — a rising line that crosses into hw_thermal_slowdown/sw_thermal_slowdown territory explains a clock drop before the operator has to guess.",
+          "description": "Per-GPU core temperature, trended against the throttle reasons below \u2014 a rising line that crosses into hw_thermal_slowdown/sw_thermal_slowdown territory explains a clock drop before the operator has to guess.",
           "gridPos": {
             "h": 8,
             "w": 6,
@@ -845,7 +845,7 @@
           "id": 21,
           "type": "timeseries",
           "title": "Clock Frequencies",
-          "description": "SM and memory clock domains, kept as separate lines by the clock label — collapsing them together would silently average two different frequency domains into a meaningless number. A clock pinned near its floor while the panel to the right shows an active throttle reason explains why; pinned low with no reason active is worth investigating on its own.",
+          "description": "SM and memory clock domains, kept as separate lines by the clock label \u2014 collapsing them together would silently average two different frequency domains into a meaningless number. A clock pinned near its floor while the panel to the right shows an active throttle reason explains why; pinned low with no reason active is worth investigating on its own.",
           "gridPos": {
             "h": 8,
             "w": 12,
@@ -868,7 +868,7 @@
           "targets": [
             {
               "expr": "nvml_gpu_clock_hertz{gpu_uuid=~\"$gpu\"}",
-              "legendFormat": "{{node}} gpu{{gpu}} · {{clock}}"
+              "legendFormat": "{{node}} gpu{{gpu}} \u00b7 {{clock}}"
             }
           ]
         },
@@ -876,7 +876,7 @@
           "id": 22,
           "type": "state-timeline",
           "title": "Clock Throttle Reasons",
-          "description": "Which named reason is currently holding the clocks down (0 inactive, 1 active), one row per reason this GPU's driver reports. A reason missing from the legend was never probed as supported on this GPU — it was not silently assumed inactive, it is simply absent. gpu_idle is expected to be on whenever nothing is running; the others are the ones worth alerting a human about.",
+          "description": "Which named reason is currently holding the clocks down (0 inactive, 1 active), one row per reason this GPU's driver reports. A reason missing from the legend was never probed as supported on this GPU \u2014 it was not silently assumed inactive, it is simply absent. gpu_idle is expected to be on whenever nothing is running; the others are the ones worth alerting a human about.",
           "gridPos": {
             "h": 8,
             "w": 12,
@@ -923,7 +923,7 @@
           "targets": [
             {
               "expr": "nvml_gpu_clocks_event_reason_active{gpu_uuid=~\"$gpu\"}",
-              "legendFormat": "{{node}} gpu{{gpu}} · {{reason}}"
+              "legendFormat": "{{node}} gpu{{gpu}} \u00b7 {{reason}}"
             }
           ]
         }
@@ -945,7 +945,7 @@
           "id": 24,
           "type": "table",
           "title": "Live GPU Usage by Pod",
-          "description": "Every pod currently consuming SM cycles on a GPU, with how hard (fraction of SM capacity used by that pod's own processes) as of the latest scrape. Empty whenever no pod is actively computing — that is a legitimately idle cluster, not a broken panel; cross-check against the entitlement table in Allocation & Support to see who is holding a GPU without using it.",
+          "description": "Every pod currently consuming SM cycles on a GPU, with how hard (fraction of SM capacity used by that pod's own processes) as of the latest scrape. Empty whenever no pod is actively computing \u2014 that is a legitimately idle cluster, not a broken panel; cross-check against the entitlement table in Allocation & Support to see who is holding a GPU without using it.",
           "gridPos": {
             "h": 8,
             "w": 24,
@@ -1022,7 +1022,7 @@
           "id": 26,
           "type": "timeseries",
           "title": "Per-Pod Memory Bandwidth Utilization",
-          "description": "Fraction of each period a pod's processes spent reading or writing device memory — distinguishes a bandwidth-bound tenant from a compute-bound one on the same card. Pair with Per-Pod Compute Utilization: high here with low there points at a data-starved kernel.",
+          "description": "Fraction of each period a pod's processes spent reading or writing device memory \u2014 distinguishes a bandwidth-bound tenant from a compute-bound one on the same card. Pair with Per-Pod Compute Utilization: high here with low there points at a data-starved kernel.",
           "gridPos": {
             "h": 8,
             "w": 12,
@@ -1066,8 +1066,8 @@
         {
           "id": 28,
           "type": "table",
-          "title": "Entitlement — Who Holds Each GPU",
-          "description": "The raw grant: which pod has been given which device or MIG instance, and how (device-plugin, annotation, or DRA). This is entitlement, not activity — a row here with nothing in the Per-Pod usage panels is a GPU that is held and idle, which is exactly what automated reclamation looks for. The underlying series is a constant 1; everything meaningful is in its labels, which is why this is a table and not a graph.",
+          "title": "Entitlement \u2014 Who Holds Each GPU",
+          "description": "The raw grant: which pod has been given which device or MIG instance, and how (device-plugin, annotation, or DRA). This is entitlement, not activity \u2014 a row here with nothing in the Per-Pod usage panels is a GPU that is held and idle, which is exactly what automated reclamation looks for. The underlying series is a constant 1; everything meaningful is in its labels, which is why this is a table and not a graph.",
           "gridPos": {
             "h": 8,
             "w": 24,
@@ -1112,7 +1112,7 @@
           "id": 29,
           "type": "table",
           "title": "Metric Support Matrix",
-          "description": "Whether each GPU can produce each metric this dashboard uses: 'Supported', 'Not supported on this GPU' (a hardware or driver limitation, not a fault), or absent from this table entirely, which means UNKNOWN — the exporter could not determine support and nothing is claimed either way. Check here before concluding an empty panel elsewhere on this dashboard is broken.",
+          "description": "Whether each GPU can produce each metric this dashboard uses: 'Supported', 'Not supported on this GPU' (a hardware or driver limitation, not a fault), or absent from this table entirely, which means UNKNOWN \u2014 the exporter could not determine support and nothing is claimed either way. Check here before concluding an empty panel elsewhere on this dashboard is broken.",
           "gridPos": {
             "h": 14,
             "w": 24,
@@ -1173,6 +1173,194 @@
             },
             "overrides": []
           }
+        }
+      ]
+    },
+    {
+      "id": 31,
+      "type": "row",
+      "title": "Scheduler Accounting (HAMi)",
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 11
+      },
+      "panels": [
+        {
+          "id": 32,
+          "type": "bargauge",
+          "title": "Fraction of Each GPU Handed Out",
+          "description": "What HAMi's scheduler believes it has committed on each card \u2014 GPUDeviceCoreAllocated over GPUDeviceCoreLimit \u2014 not what is actually executing; that is a different question, answered by the compute-comparison panel in this row. Reads 0 while nothing has been scheduled through HAMi, which is correct on an idle cluster, not a broken panel.",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 0
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gpu-prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit",
+              "min": 0,
+              "max": 1,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "orientation": "horizontal",
+            "displayMode": "gradient",
+            "showUnfilled": true
+          },
+          "targets": [
+            {
+              "expr": "GPUDeviceCoreAllocated{gpu_uuid=~\"$gpu\"} / GPUDeviceCoreLimit{gpu_uuid=~\"$gpu\"}",
+              "legendFormat": "{{node}} gpu{{deviceidx}}",
+              "instant": true
+            }
+          ]
+        },
+        {
+          "id": 33,
+          "type": "bargauge",
+          "title": "Memory Committed vs Installed, per GPU",
+          "description": "HAMi's own record of memory handed out against what it considers available on each card (GPUDeviceMemoryAllocated, GPUDeviceMemoryLimit), both natively in MiB. This is the scheduler's accounting, not a live measurement of what is actually resident \u2014 see the accounting-divergence panel in this row for how the two compare.",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 0
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gpu-prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "decmbytes",
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "orientation": "horizontal",
+            "displayMode": "gradient",
+            "showUnfilled": true
+          },
+          "targets": [
+            {
+              "expr": "GPUDeviceMemoryAllocated{gpu_uuid=~\"$gpu\"}",
+              "legendFormat": "{{node}} gpu{{deviceidx}} \u00b7 allocated",
+              "instant": true
+            },
+            {
+              "expr": "GPUDeviceMemoryLimit{gpu_uuid=~\"$gpu\"}",
+              "legendFormat": "{{node}} gpu{{deviceidx}} \u00b7 limit",
+              "instant": true
+            }
+          ]
+        },
+        {
+          "id": 34,
+          "type": "timeseries",
+          "title": "Accounting Divergence: Memory Held but Not Counted",
+          "description": "NVML's view of memory on the card, minus what HAMi believes it has handed out. The sign is the whole point and both directions matter. POSITIVE: real memory is in use that the scheduler is not counting, so its capacity view is optimistic and it can oversubscribe the card. NEGATIVE: the scheduler has reserved more than the workload actually holds, so capacity is being wasted rather than risked \u2014 measured at -5.7 GB here with two pods claiming 12 GiB and using under 7. Near zero means the two agree. HAMi reports MiB, hence the 1024*1024 conversion; the mig_uuid filter keeps a partitioned card from being counted as both parent and instance.",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 8
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gpu-prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes",
+              "custom": {
+                "fillOpacity": 8
+              }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "expr": "nvml_gpu_memory_used_bytes{gpu_uuid=~\"$gpu\", mig_uuid=\"\"} - on(gpu_uuid) (GPUDeviceMemoryAllocated{gpu_uuid=~\"$gpu\"} * 1024 * 1024)",
+              "legendFormat": "{{gpu_uuid}}"
+            }
+          ]
+        },
+        {
+          "id": 35,
+          "type": "timeseries",
+          "title": "Committed vs Actually Used, Compute",
+          "description": "HAMi's core commitment per card (GPUDeviceCoreAllocated, 0-100) against the SM utilization NVML actually measures across every process on that card (nvml_process_sm_utilization_ratio, summed per GPU and scaled to the same 0-100 range). The gap between the two is entitlement that is not being consumed \u2014 a GPU held but idle. On this cluster HAMi has been measured not enforcing its cores grant, so a large, sustained gap here is expected and is itself the finding, not a bug in the panel.",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 8
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gpu-prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "custom": {
+                "fillOpacity": 8
+              }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "expr": "GPUDeviceCoreAllocated{gpu_uuid=~\"$gpu\"}",
+              "legendFormat": "{{node}} gpu{{deviceidx}} \u00b7 HAMi committed"
+            },
+            {
+              "expr": "sum by (gpu_uuid) (nvml_process_sm_utilization_ratio{gpu_uuid=~\"$gpu\"}) * 100",
+              "legendFormat": "{{gpu_uuid}} \u00b7 actually used"
+            }
+          ]
         }
       ]
     }
