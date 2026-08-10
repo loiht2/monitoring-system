@@ -1,0 +1,4 @@
+[submodule "exporters/ebpf/eBPF-Lens"]
+	path = exporters/ebpf/eBPF-Lens
+	url = https://github.com/loiht2/eBPF-Lens.git
+	branch = feature/add-GPU-metrics
