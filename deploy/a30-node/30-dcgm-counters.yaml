@@ -41,7 +41,11 @@ data:
     DCGM_FI_PROF_PIPE_FP64_ACTIVE,           gauge, Ratio of cycles the non-tensor FP64 pipe is active.
     DCGM_FI_PROF_PIPE_FP32_ACTIVE,           gauge, Ratio of cycles the non-tensor FP32 pipe is active.
     DCGM_FI_PROF_PIPE_FP16_ACTIVE,           gauge, Ratio of cycles the non-tensor FP16 pipe is active.
-    # DCGM_FI_PROF_PIPE_INT_ACTIVE and DCGM_FI_PROF_DMMA_CYCLES_ACTIVE_TOTAL are NOT
-    # collected here. INT logs 'metric not enabled' on this hardware, and DMMA is not a
-    # known field in this DCGM build at all — an unknown field is FATAL, not skipped:
-    # the exporter serves nothing, so one bad line silently drops every other field.
+    # Requested even where unsupported. DCGM logs 'metric not enabled' and skips it,
+    # which is harmless — and its absence for a GPU is the evidence the support rule
+    # uses to report "not supported on this GPU" instead of a bare "No data"
+    # (docs-internal/10 § 2.2). Removing it would destroy that evidence.
+    DCGM_FI_PROF_PIPE_INT_ACTIVE,            gauge, Ratio of cycles the integer pipe is active.
+    # DCGM_FI_PROF_DMMA_CYCLES_ACTIVE_TOTAL stays out permanently. It is not a known field
+    # in this DCGM build, and an unknown field is FATAL rather than skipped: the exporter
+    # then serves nothing, so one bad line silently drops every other field.

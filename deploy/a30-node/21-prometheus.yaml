@@ -16,6 +16,12 @@ spec:
   serviceMonitorSelector:
     matchLabels:
       app.kubernetes.io/part-of: gpu-monitoring
+  # Required for 60-prometheusrule-metric-support.yaml to be evaluated at all.
+  # A nil selector selects NOTHING, so without this the rule applies cleanly and
+  # is silently never run.
+  ruleSelector:
+    matchLabels:
+      app.kubernetes.io/part-of: gpu-monitoring
   # podMonitorSelector, probeSelector and scrapeConfigSelector are deliberately
   # left unset: a nil selector selects nothing, so no unrelated object can join
   # this Prometheus's target set.
