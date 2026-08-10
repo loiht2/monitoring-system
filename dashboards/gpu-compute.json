@@ -1,0 +1,79 @@
+{
+  "uid": "gpu-compute",
+  "title": "GPU Compute",
+  "tags": ["gpu"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "gpu",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "gpu-prometheus" },
+        "query": "label_values(DCGM_FI_DEV_GPU_UTIL, gpu_uuid)",
+        "includeAll": true,
+        "multi": true
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1, "type": "timeseries", "title": "Engine active",
+      "description": "Ratio of time the graphics/compute engine was active. Stricter than GPU utilization, and the measure that stays valid under MIG.",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "gpu-prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1 }, "overrides": [] },
+      "targets": [ { "expr": "DCGM_FI_PROF_GR_ENGINE_ACTIVE{gpu_uuid=~\"$gpu\"}", "legendFormat": "{{gpu_uuid}}" } ]
+    },
+    {
+      "id": 2, "type": "timeseries", "title": "SM active vs occupancy",
+      "description": "SM active is the fraction of cycles at least one warp was resident. Occupancy is resident warps against the hardware maximum. High occupancy does not imply efficient work.",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "gpu-prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1 }, "overrides": [] },
+      "targets": [
+        { "expr": "DCGM_FI_PROF_SM_ACTIVE{gpu_uuid=~\"$gpu\"}", "legendFormat": "active {{gpu_uuid}}" },
+        { "expr": "DCGM_FI_PROF_SM_OCCUPANCY{gpu_uuid=~\"$gpu\"}", "legendFormat": "occupancy {{gpu_uuid}}" }
+      ]
+    },
+    {
+      "id": 3, "type": "timeseries", "title": "Compute pipes",
+      "description": "Which arithmetic units the workload is using. High FP32 with near-zero tensor activity in a training job usually means mixed precision is not engaged. DCGM_FI_PROF_PIPE_INT_ACTIVE has no target here: it reports 'metric not enabled' on this hardware and is therefore not collected, and a target for an uncollected field renders a permanently empty series that reads as a broken panel.",
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "gpu-prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1 }, "overrides": [] },
+      "targets": [
+        { "expr": "DCGM_FI_PROF_PIPE_TENSOR_ACTIVE{gpu_uuid=~\"$gpu\"}", "legendFormat": "tensor (any)" },
+        { "expr": "DCGM_FI_PROF_PIPE_TENSOR_HMMA_ACTIVE{gpu_uuid=~\"$gpu\"}", "legendFormat": "tensor HMMA fp16/bf16" },
+        { "expr": "DCGM_FI_PROF_PIPE_TENSOR_IMMA_ACTIVE{gpu_uuid=~\"$gpu\"}", "legendFormat": "tensor IMMA int8" },
+        { "expr": "DCGM_FI_PROF_PIPE_FP32_ACTIVE{gpu_uuid=~\"$gpu\"}", "legendFormat": "fp32" },
+        { "expr": "DCGM_FI_PROF_PIPE_FP16_ACTIVE{gpu_uuid=~\"$gpu\"}", "legendFormat": "fp16" },
+        { "expr": "DCGM_FI_PROF_PIPE_FP64_ACTIVE{gpu_uuid=~\"$gpu\"}", "legendFormat": "fp64" }
+      ]
+    },
+    {
+      "id": 4, "type": "timeseries", "title": "Memory bandwidth vs compute",
+      "description": "DRAM active is the memory-bandwidth measure. High DRAM with low SM activity means the workload is memory-bound.",
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "gpu-prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1 }, "overrides": [] },
+      "targets": [
+        { "expr": "DCGM_FI_PROF_DRAM_ACTIVE{gpu_uuid=~\"$gpu\"}", "legendFormat": "dram {{gpu_uuid}}" },
+        { "expr": "DCGM_FI_PROF_SM_ACTIVE{gpu_uuid=~\"$gpu\"}", "legendFormat": "sm {{gpu_uuid}}" }
+      ]
+    },
+    {
+      "id": 6, "type": "timeseries", "title": "PCIe throughput",
+      "description": "Host-to-device traffic is usually the input pipeline. Rising RX with flat SM activity means the GPU is being starved.",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 17 },
+      "datasource": { "type": "prometheus", "uid": "gpu-prometheus" },
+      "fieldConfig": { "defaults": { "unit": "Bps" }, "overrides": [] },
+      "targets": [
+        { "expr": "DCGM_FI_PROF_PCIE_RX_BYTES{gpu_uuid=~\"$gpu\"}", "legendFormat": "rx {{gpu_uuid}}" },
+        { "expr": "DCGM_FI_PROF_PCIE_TX_BYTES{gpu_uuid=~\"$gpu\"}", "legendFormat": "tx {{gpu_uuid}}" }
+      ]
+    }
+  ]
+}

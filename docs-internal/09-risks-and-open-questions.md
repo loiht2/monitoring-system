@@ -18,7 +18,30 @@ deliberately does not do.
 These concern the production environment, where a monitoring stack and its consumers already exist. Each is a
 silent failure — none produces an error.
 
-#### R-DCGM-FIELDS — one unknown field silently drops every other field
+#### A-1 — verified: profiling fields did not degrade what was already collected
+
+Measured on an A30 under identical gpu-burn load, 120s averages, before and after adding eight profiling
+fields (23 -> 31):
+
+| field | before | after | change |
+|---|---|---|---|
+| `DCGM_FI_PROF_GR_ENGINE_ACTIVE` | 0.999995 | 0.999992 | -0.0% |
+| `DCGM_FI_PROF_DRAM_ACTIVE` | 0.383516 | 0.378295 | -1.4% |
+| `DCGM_FI_PROF_PIPE_TENSOR_ACTIVE` | 0.366671 | 0.367784 | +0.3% |
+| `DCGM_FI_PROF_PCIE_RX_BYTES` | 1.266e8 | 1.313e8 | +3.7% |
+| `DCGM_FI_PROF_PCIE_TX_BYTES` | 4.852e7 | 4.988e7 | +2.8% |
+
+No multiplexing degradation at this field count on this hardware. The PCIe deltas are load variation, not
+counter noise — they are byte rates, not ratios.
+
+The new fields cross-check: `PIPE_TENSOR_HMMA_ACTIVE` 0.365 against `PIPE_TENSOR_ACTIVE` 0.368, which is what
+a tensor workload running FP16 HMMA should look like. `SM_ACTIVE` 0.921 with `SM_OCCUPANCY` 0.136 is the
+expected shape for gpu-burn: nearly every cycle has a resident warp, but few warps per SM.
+
+This result holds for **31 fields**. Adding materially more profiling fields re-opens the question, so
+re-measure rather than assuming it generalizes.
+
+### R-DCGM-FIELDS — one unknown field silently drops every other field
 
 Observed live. `DCGM_FI_PROF_DMMA_CYCLES_ACTIVE_TOTAL` is not a known field in the DCGM build shipped by this
 GPU Operator. The exporter logs `could not find DCGM field` and then serves **nothing at all** — not the bad
