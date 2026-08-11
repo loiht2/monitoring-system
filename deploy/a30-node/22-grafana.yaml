@@ -78,8 +78,10 @@ spec:
             # One mount per dashboard ConfigMap: a configMap volume replaces
             # the whole path rather than merging, so a second dashboard added
             # to one mount would hide the first.
-            - name: dash-gpu-hardware
-              mountPath: /var/lib/grafana/dashboards/gpu-hardware
+            - name: dash-gpu-hardware-device
+              mountPath: /var/lib/grafana/dashboards/gpu-hardware-device
+            - name: dash-gpu-hardware-mig
+              mountPath: /var/lib/grafana/dashboards/gpu-hardware-mig
             - name: dash-gpu-software
               mountPath: /var/lib/grafana/dashboards/gpu-software
 
@@ -95,9 +97,13 @@ spec:
         - name: dashboard-provider
           configMap:
             name: grafana-dashboard-provider
-        - name: dash-gpu-hardware
+        - name: dash-gpu-hardware-device
           configMap:
-            name: grafana-dashboard-gpu-hardware
+            name: grafana-dashboard-gpu-hardware-device
+            optional: true
+        - name: dash-gpu-hardware-mig
+          configMap:
+            name: grafana-dashboard-gpu-hardware-mig
             optional: true
         - name: dash-gpu-software
           configMap:

@@ -101,3 +101,19 @@ picture. Neither invents text for a metric whose support is unknown — an absen
   and distinguishing them needs information neither exporter has.
 - It does not cover eBPF metrics. Those are per-pod behaviour, not device capability.
 - It says nothing about a metric that is supported but idle. That is `No data`, and correctly so.
+
+
+---
+
+## 5. The DCGM half is per-card, so MIG instances have no DCGM support rows
+
+The recording rule in § 2.2 groups by `gpu_uuid` and nothing else, so it emits one verdict per physical card.
+A MIG instance therefore gets **no DCGM-sourced support row at all**, and the MIG dashboard's support matrix
+shows only the NVML-probed entries.
+
+The consequence is narrow but real: on a partitioned card, a blank DCGM profiling panel cannot be
+distinguished from an unsupported one, which is exactly the question this metric exists to answer. The NVML
+half is unaffected, because the exporter probes each handle including instances.
+
+Fixing it means grouping the rule by `(gpu_uuid, GPU_I_ID)` and emitting a row per entity. That is a change to
+the rule's shape, not a bug in it, and is deliberately left undone rather than half-done.

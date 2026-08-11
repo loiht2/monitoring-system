@@ -1,7 +1,7 @@
 {
   "uid": "gpu-software",
-  "title": "GPU Software",
-  "description": "What each pod asks CUDA to do, and where it waits — entirely eBPF-sourced (kernel launches, memory operations, synchronization, HAMi interception). Complements GPU Hardware: this dashboard never says what the silicon did, only what the workload asked it to do. Follows the eBPF-Lens upstream layout (Overview → Compute Activity → Memory Activity → Errors → Synchronization Latency → Kernel Launch Dimensions). Only 8 of the 20 eBPF metric families have ever produced data on this cluster (gpu-burn plus a resnet50/shufflenet_v2 training run); panels for the other 12 are still built — each says explicitly that it is unobserved here and why, most commonly PyTorch's caching allocator or a workload shape that never exercises that code path.",
+  "title": "GPU Software \u2014 eBPF",
+  "description": "What each pod asks CUDA to do, and where it waits \u2014 entirely eBPF-sourced (kernel launches, memory operations, synchronization, HAMi interception). Complements GPU Hardware: this dashboard never says what the silicon did, only what the workload asked it to do. Follows the eBPF-Lens upstream layout (Overview \u2192 Compute Activity \u2192 Memory Activity \u2192 Errors \u2192 Synchronization Latency \u2192 Kernel Launch Dimensions). Only 8 of the 20 eBPF metric families have ever produced data on this cluster (gpu-burn plus a resnet50/shufflenet_v2 training run); panels for the other 12 are still built \u2014 each says explicitly that it is unobserved here and why, most commonly PyTorch's caching allocator or a workload shape that never exercises that code path.",
   "tags": [
     "gpu",
     "ebpf"
@@ -83,7 +83,7 @@
       "id": 2,
       "type": "stat",
       "title": "Total CUDA Kernel Launches",
-      "description": "Total kernels launched by the selected pods and GPUs across the current time window. The single clearest liveness signal this dashboard has — zero while a pod is Running means nothing reached the GPU during the window; check Compute Activity for a per-pod breakdown.",
+      "description": "Total kernels launched by the selected pods and GPUs across the current time window. The single clearest liveness signal this dashboard has \u2014 zero while a pod is Running means nothing reached the GPU during the window; check Compute Activity for a per-pod breakdown.",
       "gridPos": {
         "h": 9,
         "w": 8,
@@ -134,7 +134,7 @@
       "id": 3,
       "type": "stat",
       "title": "Total CUDA Errors",
-      "description": "Total failed CUDA driver calls (non-zero return code) in the window, across every probed function. Not yet observed on this cluster — every traced call has returned success so far, which is a healthy result, not a gap. Drill into the Errors row for which function and code the moment this goes non-zero.",
+      "description": "Total failed CUDA driver calls (non-zero return code) in the window, across every probed function. Not yet observed on this cluster \u2014 every traced call has returned success so far, which is a healthy result, not a gap. Drill into the Errors row for which function and code the moment this goes non-zero.",
       "gridPos": {
         "h": 9,
         "w": 8,
@@ -256,7 +256,7 @@
           "id": 5,
           "type": "timeseries",
           "title": "CUDA Kernel Launch Rate",
-          "description": "Kernels submitted to the GPU per second, per pod — the clearest liveness signal for a GPU workload. A sudden drop while the pod is still Running usually means a stall; check the Errors row or GPU memory (GPU Hardware dashboard) next.",
+          "description": "Kernels submitted to the GPU per second, per pod \u2014 the clearest liveness signal for a GPU workload. A sudden drop while the pod is still Running usually means a stall; check the Errors row or GPU memory (GPU Hardware dashboard) next.",
           "gridPos": {
             "h": 9,
             "w": 12,
@@ -287,7 +287,7 @@
           "id": 6,
           "type": "timeseries",
           "title": "CUDA Graph Launch Rate",
-          "description": "How often the workload replays a captured CUDA Graph (cuGraphLaunch) — one call submits a whole batched sequence of kernels, so it never shows up in the per-kernel counter to the left. Not yet observed on this cluster: neither gpu-burn nor the resnet50/shufflenet_v2 validation run uses graph-mode execution (torch.cuda.graphs, vLLM, TensorRT-LLM). Non-zero once populated means the framework is using graph optimisation.",
+          "description": "How often the workload replays a captured CUDA Graph (cuGraphLaunch) \u2014 one call submits a whole batched sequence of kernels, so it never shows up in the per-kernel counter to the left. Not yet observed on this cluster: neither gpu-burn nor the resnet50/shufflenet_v2 validation run uses graph-mode execution (torch.cuda.graphs, vLLM, TensorRT-LLM). Non-zero once populated means the framework is using graph optimisation.",
           "gridPos": {
             "h": 9,
             "w": 12,
@@ -318,7 +318,7 @@
           "id": 7,
           "type": "heatmap",
           "title": "Host-Side CUDA Kernel Launch Latency Distribution",
-          "description": "Full distribution of how long the HOST waited inside the launch call, across the selected pods. A P95/P99 line (right) can hide a bimodal stall — most launches fast, a distinct second cluster slow — where this heatmap shows two separate bands instead of one blurred average. Look for a second warm band appearing above the main one before trusting a P95 line alone.",
+          "description": "Full distribution of how long the HOST waited inside the launch call, across the selected pods. A P95/P99 line (right) can hide a bimodal stall \u2014 most launches fast, a distinct second cluster slow \u2014 where this heatmap shows two separate bands instead of one blurred average. Look for a second warm band appearing above the main one before trusting a P95 line alone.",
           "gridPos": {
             "h": 9,
             "w": 12,
@@ -373,7 +373,7 @@
           "id": 8,
           "type": "timeseries",
           "title": "Host-Side CUDA Kernel Launch Latency P95/P99",
-          "description": "How long the HOST waited to submit work, not GPU runtime — launches are asynchronous. Rising here while the Kernel Launch Rate stays flat means the bottleneck is the CPU or the input pipeline, not the GPU. See the heatmap to the left for the full distribution; a P95 line can under-report a bimodal stall.",
+          "description": "How long the HOST waited to submit work, not GPU runtime \u2014 launches are asynchronous. Rising here while the Kernel Launch Rate stays flat means the bottleneck is the CPU or the input pipeline, not the GPU. See the heatmap to the left for the full distribution; a P95 line can under-report a bimodal stall.",
           "gridPos": {
             "h": 9,
             "w": 12,
@@ -408,7 +408,7 @@
           "id": 9,
           "type": "table",
           "title": "Pods Ranked by CUDA Activity",
-          "description": "Every pod that launched at least one CUDA kernel in the selected window, ranked by launch count — the fastest way to see which workloads are actually doing CUDA work right now versus merely holding a GPU allocation. Cross-check against GPU Hardware's entitlement table to see who holds a GPU without using it.",
+          "description": "Every pod that launched at least one CUDA kernel in the selected window, ranked by launch count \u2014 the fastest way to see which workloads are actually doing CUDA work right now versus merely holding a GPU allocation. Cross-check against GPU Hardware's entitlement table to see who holds a GPU without using it.",
           "gridPos": {
             "h": 8,
             "w": 24,
@@ -538,7 +538,7 @@
           "id": 12,
           "type": "timeseries",
           "title": "Average Memory Allocation Size",
-          "description": "Bytes per allocation call, averaged over the rate window. Not yet observed on this cluster — it depends on the same allocation-call family above, which PyTorch's caching allocator makes nearly silent after warm-up. A very small average, once populated, suggests the workload isn't using a caching allocator at all.",
+          "description": "Bytes per allocation call, averaged over the rate window. Not yet observed on this cluster \u2014 it depends on the same allocation-call family above, which PyTorch's caching allocator makes nearly silent after warm-up. A very small average, once populated, suggests the workload isn't using a caching allocator at all.",
           "gridPos": {
             "h": 9,
             "w": 12,
@@ -569,7 +569,7 @@
           "id": 13,
           "type": "timeseries",
           "title": "GPU Memory Free Rate",
-          "description": "Bytes/second of GPU memory freed, including host-pinned unregister. Not yet observed on this cluster — PyTorch's caching allocator holds onto its arena instead of freeing back to the driver during steady-state training, the same reason the allocation family is silent. Once populated, pair with Allocation Rate: allocations persistently exceeding frees is the leak signature.",
+          "description": "Bytes/second of GPU memory freed, including host-pinned unregister. Not yet observed on this cluster \u2014 PyTorch's caching allocator holds onto its arena instead of freeing back to the driver during steady-state training, the same reason the allocation family is silent. Once populated, pair with Allocation Rate: allocations persistently exceeding frees is the leak signature.",
           "gridPos": {
             "h": 9,
             "w": 12,
@@ -654,22 +654,22 @@
           "targets": [
             {
               "expr": "sum by (k8s_namespace_name, k8s_pod_name, gpu_uuid, cuda_memcpy_kind) (rate(ebpf_cuda_memory_copies_bytes_total_sum{k8s_pod_name=~\"$pod\",gpu_uuid=~\"$gpu\",cuda_memcpy_kind=~\"MemcpyHostToDevice\"}[$__rate_interval]))",
-              "legendFormat": "Host→Device | {{k8s_namespace_name}}/{{k8s_pod_name}} [{{gpu_uuid}}]"
+              "legendFormat": "Host\u2192Device | {{k8s_namespace_name}}/{{k8s_pod_name}} [{{gpu_uuid}}]"
             },
             {
               "expr": "sum by (k8s_namespace_name, k8s_pod_name, gpu_uuid, cuda_memcpy_kind) (rate(ebpf_cuda_memory_copies_bytes_total_sum{k8s_pod_name=~\"$pod\",gpu_uuid=~\"$gpu\",cuda_memcpy_kind=~\"MemcpyDeviceToHost\"}[$__rate_interval]))",
-              "legendFormat": "Device→Host | {{k8s_namespace_name}}/{{k8s_pod_name}} [{{gpu_uuid}}]"
+              "legendFormat": "Device\u2192Host | {{k8s_namespace_name}}/{{k8s_pod_name}} [{{gpu_uuid}}]"
             },
             {
               "expr": "sum by (k8s_namespace_name, k8s_pod_name, gpu_uuid, cuda_memcpy_kind) (rate(ebpf_cuda_memory_copies_bytes_total_sum{k8s_pod_name=~\"$pod\",gpu_uuid=~\"$gpu\",cuda_memcpy_kind=~\"MemcpyDeviceToDevice\"}[$__rate_interval]))",
-              "legendFormat": "Device→Device | {{k8s_namespace_name}}/{{k8s_pod_name}} [{{gpu_uuid}}]"
+              "legendFormat": "Device\u2192Device | {{k8s_namespace_name}}/{{k8s_pod_name}} [{{gpu_uuid}}]"
             }
           ]
         },
         {
           "id": 16,
           "type": "timeseries",
-          "title": "Memset Traffic — Sync vs Async",
+          "title": "Memset Traffic \u2014 Sync vs Async",
           "description": "Bytes/second cleared on the device (cudaMemset / cudaMemsetAsync), split by whether the call blocks the host. High sync-memset rates are often wasteful buffer re-initialisation that could be replaced with the async form or with reuse.",
           "gridPos": {
             "h": 9,
@@ -705,7 +705,7 @@
           "id": 17,
           "type": "timeseries",
           "title": "P2P Peer Copy Traffic",
-          "description": "Direct GPU-to-GPU transfer bytes/second over NVLink/PCIe, bypassing the host. Not yet observed on this cluster: every validated workload (gpu-burn, resnet50/shufflenet_v2) ran on a single shared card, so there was no peer traffic to trace. Non-zero once populated only for workloads that copy directly between devices — normal for multi-GPU training, otherwise worth investigating.",
+          "description": "Direct GPU-to-GPU transfer bytes/second over NVLink/PCIe, bypassing the host. Not yet observed on this cluster: every validated workload (gpu-burn, resnet50/shufflenet_v2) ran on a single shared card, so there was no peer traffic to trace. Non-zero once populated only for workloads that copy directly between devices \u2014 normal for multi-GPU training, otherwise worth investigating.",
           "gridPos": {
             "h": 9,
             "w": 12,
@@ -750,7 +750,7 @@
           "id": 18,
           "type": "timeseries",
           "title": "CUDA Errors per Interval",
-          "description": "New CUDA errors per interval, broken down by which function failed and its return code (e.g. 2 = out of memory, 1 = invalid argument, 400 = invalid handle). Not yet observed on this cluster — catches failures a workload swallows without logging, the moment any traced call starts returning non-zero.",
+          "description": "New CUDA errors per interval, broken down by which function failed and its return code (e.g. 2 = out of memory, 1 = invalid argument, 400 = invalid handle). Not yet observed on this cluster \u2014 catches failures a workload swallows without logging, the moment any traced call starts returning non-zero.",
           "gridPos": {
             "h": 9,
             "w": 12,
@@ -781,7 +781,7 @@
           "id": 19,
           "type": "timeseries",
           "title": "HAMi OOM Events per Interval",
-          "description": "New HAMi quota-denied allocations per interval, by function and memory kind. Not yet observed on this cluster — no traced pod has hit a HAMi memory quota. Non-zero once populated means increase the ResourceClaim memory limit for that pod.",
+          "description": "New HAMi quota-denied allocations per interval, by function and memory kind. Not yet observed on this cluster \u2014 no traced pod has hit a HAMi memory quota. Non-zero once populated means increase the ResourceClaim memory limit for that pod.",
           "gridPos": {
             "h": 9,
             "w": 12,
@@ -812,7 +812,7 @@
           "id": 20,
           "type": "timeseries",
           "title": "HAMi Compute Throttle Latency P95/P99",
-          "description": "How long HAMi's rate limiter delayed each kernel launch before passing it to the driver — the compute quota being enforced, measured directly. Not yet observed on this cluster: HAMi's interception library is injected into the gpu-burn pods, but this metric staying empty is the second independent signal (alongside near-50/50 SM utilization against a 3:1 grant — see the NVML exporter notes) that HAMi is not actually enforcing its compute-core grant here. Persistently high values, once populated, mean the SM quota is too tight.",
+          "description": "How long HAMi's rate limiter delayed each kernel launch before passing it to the driver \u2014 the compute quota being enforced, measured directly. Not yet observed on this cluster: HAMi's interception library is injected into the gpu-burn pods, but this metric staying empty is the second independent signal (alongside near-50/50 SM utilization against a 3:1 grant \u2014 see the NVML exporter notes) that HAMi is not actually enforcing its compute-core grant here. Persistently high values, once populated, mean the SM quota is too tight.",
           "gridPos": {
             "h": 9,
             "w": 24,
@@ -846,8 +846,8 @@
         {
           "id": 21,
           "type": "table",
-          "title": "HAMi OOM Events — Detail Table",
-          "description": "All HAMi OOM tuples in the selected time range, even for pods that have already exited — useful after the fact since kernel-level metrics disappear once a pod is gone. Not yet observed on this cluster; will populate at the same moment as the two panels above.",
+          "title": "HAMi OOM Events \u2014 Detail Table",
+          "description": "All HAMi OOM tuples in the selected time range, even for pods that have already exited \u2014 useful after the fact since kernel-level metrics disappear once a pod is gone. Not yet observed on this cluster; will populate at the same moment as the two panels above.",
           "gridPos": {
             "h": 10,
             "w": 24,
@@ -924,7 +924,7 @@
           "id": 22,
           "type": "timeseries",
           "title": "CUDA Stream Sync Latency P95/P99",
-          "description": "Host-thread wait time in cuStreamSynchronize — how long the CPU blocked for one specific stream to drain. High values indicate GPU backpressure on that stream: the host has more work queued than the GPU can drain.",
+          "description": "Host-thread wait time in cuStreamSynchronize \u2014 how long the CPU blocked for one specific stream to drain. High values indicate GPU backpressure on that stream: the host has more work queued than the GPU can drain.",
           "gridPos": {
             "h": 9,
             "w": 12,
@@ -959,7 +959,7 @@
           "id": 23,
           "type": "timeseries",
           "title": "CUDA Device Sync Latency P95/P99",
-          "description": "Host-thread wait time in cuCtxSynchronize / cuDeviceSynchronize — a full-device barrier, stricter than a stream sync. Not yet observed on this cluster: gpu-burn loops kernels without a device-wide barrier, and the training benchmark synchronizes at the stream level instead. Sustained high P99, once populated, is a strong backpressure signal and serializes the whole pipeline, not just one stream.",
+          "description": "Host-thread wait time in cuCtxSynchronize / cuDeviceSynchronize \u2014 a full-device barrier, stricter than a stream sync. Not yet observed on this cluster: gpu-burn loops kernels without a device-wide barrier, and the training benchmark synchronizes at the stream level instead. Sustained high P99, once populated, is a strong backpressure signal and serializes the whole pipeline, not just one stream.",
           "gridPos": {
             "h": 9,
             "w": 12,
@@ -994,7 +994,7 @@
           "id": 24,
           "type": "timeseries",
           "title": "CUDA Event Sync Latency P95/P99",
-          "description": "Host-thread wait time in cuEventSynchronize — how long the CPU blocked waiting on one specific recorded CUDA event, finer-grained than a stream or device sync. Not yet observed on this cluster: neither validation workload uses event-based wait/dependency tracking.",
+          "description": "Host-thread wait time in cuEventSynchronize \u2014 how long the CPU blocked waiting on one specific recorded CUDA event, finer-grained than a stream or device sync. Not yet observed on this cluster: neither validation workload uses event-based wait/dependency tracking.",
           "gridPos": {
             "h": 9,
             "w": 12,
@@ -1029,7 +1029,7 @@
           "id": 25,
           "type": "timeseries",
           "title": "CUDA Event Elapsed Time P95/P99",
-          "description": "Real on-device execution time between two CUDA events (cudaEventElapsedTime) — the one genuine hardware timing this exporter can report; every other duration on this dashboard is host-side wait. Not yet observed on this cluster: it only appears for a workload that explicitly times itself with paired CUDA events, which neither gpu-burn nor the training benchmark does. A bonus signal when present, never a dependency — its absence does not mean the GPU is idle.",
+          "description": "Real on-device execution time between two CUDA events (cudaEventElapsedTime) \u2014 the one genuine hardware timing this exporter can report; every other duration on this dashboard is host-side wait. Not yet observed on this cluster: it only appears for a workload that explicitly times itself with paired CUDA events, which neither gpu-burn nor the training benchmark does. A bonus signal when present, never a dependency \u2014 its absence does not mean the GPU is idle.",
           "gridPos": {
             "h": 9,
             "w": 12,
@@ -1078,7 +1078,7 @@
           "id": 26,
           "type": "timeseries",
           "title": "Kernel Grid Size P95/P99",
-          "description": "Distribution of grid size (gridX × gridY × gridZ = total thread blocks) requested per kernel launch. P95/P99 reveal the largest kernels being scheduled — pair with Block Size to see how much parallelism the workload is asking for per launch.",
+          "description": "Distribution of grid size (gridX \u00d7 gridY \u00d7 gridZ = total thread blocks) requested per kernel launch. P95/P99 reveal the largest kernels being scheduled \u2014 pair with Block Size to see how much parallelism the workload is asking for per launch.",
           "gridPos": {
             "h": 9,
             "w": 12,
@@ -1113,7 +1113,7 @@
           "id": 27,
           "type": "timeseries",
           "title": "Kernel Block Size P95/P99",
-          "description": "Distribution of block size (blockX × blockY × blockZ = threads per block) requested per kernel launch. With Grid Size, this explains an SM occupancy figure on the GPU Hardware dashboard — small blocks with low occupancy there usually means the launch configuration itself is limiting parallelism, not GPU capacity.",
+          "description": "Distribution of block size (blockX \u00d7 blockY \u00d7 blockZ = threads per block) requested per kernel launch. With Grid Size, this explains an SM occupancy figure on the GPU Hardware dashboard \u2014 small blocks with low occupancy there usually means the launch configuration itself is limiting parallelism, not GPU capacity.",
           "gridPos": {
             "h": 9,
             "w": 12,
@@ -1148,7 +1148,7 @@
           "id": 28,
           "type": "timeseries",
           "title": "Kernel Shared Memory Request Size P95/P99",
-          "description": "Distribution of shared memory requested per kernel launch. High requests limit how many blocks can be resident on one SM at once, capping occupancy even when the grid asks for plenty of parallelism — a kernel that looks under-occupied on GPU Hardware may simply be requesting too much shared memory per block.",
+          "description": "Distribution of shared memory requested per kernel launch. High requests limit how many blocks can be resident on one SM at once, capping occupancy even when the grid asks for plenty of parallelism \u2014 a kernel that looks under-occupied on GPU Hardware may simply be requesting too much shared memory per block.",
           "gridPos": {
             "h": 9,
             "w": 24,

@@ -1,0 +1,1014 @@
+{
+  "uid": "gpu-hardware-device",
+  "title": "GPU Hardware — Device",
+  "description": "What a whole physical card is doing, who holds it, and whether it is healthy — merging DCGM, NVML and allocation into one view that never says which exporter a number came from. Every nvml_* panel filters to the whole-device reading (mig_uuid=\"\") so a MIG-partitioned card's instance-scoped reading is never double-counted into a device total; see GPU Hardware — MIG for the per-instance view.",
+  "tags": [
+    "gpu",
+    "hardware",
+    "device"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "refresh": "30s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "gpu",
+        "label": "GPU",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "gpu-prometheus"
+        },
+        "query": "label_values(gpu_uuid)",
+        "refresh": 2,
+        "sort": 1,
+        "includeAll": true,
+        "multi": true,
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "hide": 0
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 22,
+      "type": "row",
+      "title": "Performance",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "panels": []
+    },
+    {
+      "id": 1,
+      "type": "gauge",
+      "title": "GPU Utilization",
+      "description": "Percent of time over the past sample period during which one or more kernels was executing on the GPU.",
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 0,
+        "y": 1
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.85
+              },
+              {
+                "color": "red",
+                "value": 0.95
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "targets": [
+        {
+          "expr": "nvml_gpu_utilization_ratio{gpu_uuid=~\"$gpu\", mig_uuid=\"\"}",
+          "legendFormat": "{{node}} gpu{{gpu}}",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "GPU Utilization per Pod",
+      "description": "GPU utilization attributed to the processes of one pod.",
+      "gridPos": {
+        "h": 8,
+        "w": 9,
+        "x": 6,
+        "y": 1
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum by (namespace, pod, gpu_uuid) (nvml_process_sm_utilization_ratio{gpu_uuid=~\"$gpu\", mig_uuid=\"\"})",
+          "legendFormat": "{{namespace}}/{{pod}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "SM Activity",
+      "description": "The fraction of time at least one warp was active on a multiprocessor, averaged over all multiprocessors.",
+      "gridPos": {
+        "h": 8,
+        "w": 9,
+        "x": 15,
+        "y": 1
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "DCGM_FI_PROF_SM_ACTIVE{gpu_uuid=~\"$gpu\"}",
+          "legendFormat": "{{node}} gpu{{gpu}}"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "SM Occupancy",
+      "description": "The fraction of resident warps on a multiprocessor, relative to the maximum number of concurrent warps supported on a multiprocessor.",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 9
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "DCGM_FI_PROF_SM_OCCUPANCY{gpu_uuid=~\"$gpu\"}",
+          "legendFormat": "{{node}} gpu{{gpu}}"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Tensor Core Utilization",
+      "description": "The fraction of cycles the tensor (HMMA / IMMA) pipe was active.",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 9
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "DCGM_FI_PROF_PIPE_TENSOR_ACTIVE{gpu_uuid=~\"$gpu\"}",
+          "legendFormat": "{{node}} gpu{{gpu}} · tensor (all)"
+        },
+        {
+          "expr": "DCGM_FI_PROF_PIPE_TENSOR_HMMA_ACTIVE{gpu_uuid=~\"$gpu\"}",
+          "legendFormat": "{{node}} gpu{{gpu}} · HMMA"
+        },
+        {
+          "expr": "DCGM_FI_PROF_PIPE_TENSOR_IMMA_ACTIVE{gpu_uuid=~\"$gpu\"}",
+          "legendFormat": "{{node}} gpu{{gpu}} · IMMA"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "FP & Integer Utilization",
+      "description": "The fraction of cycles the FP64, FP32 (FMA) and FP16 pipes were active.",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 9
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "DCGM_FI_PROF_PIPE_FP64_ACTIVE{gpu_uuid=~\"$gpu\"}",
+          "legendFormat": "{{node}} gpu{{gpu}} · FP64"
+        },
+        {
+          "expr": "DCGM_FI_PROF_PIPE_FP32_ACTIVE{gpu_uuid=~\"$gpu\"}",
+          "legendFormat": "{{node}} gpu{{gpu}} · FP32"
+        },
+        {
+          "expr": "DCGM_FI_PROF_PIPE_FP16_ACTIVE{gpu_uuid=~\"$gpu\"}",
+          "legendFormat": "{{node}} gpu{{gpu}} · FP16"
+        },
+        {
+          "expr": "DCGM_FI_PROF_PIPE_INT_ACTIVE{gpu_uuid=~\"$gpu\"}",
+          "legendFormat": "{{node}} gpu{{gpu}} · integer"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "DRAM Activity",
+      "description": "The fraction of cycles where data was sent to or received from device memory.",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 17
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "DCGM_FI_PROF_DRAM_ACTIVE{gpu_uuid=~\"$gpu\"}",
+          "legendFormat": "{{node}} gpu{{gpu}}"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "L2 Cache Hit Rates",
+      "description": "L2 hit rate for accesses to host memory and to peer GPU memory. Host-memory hits require a Grace-coupled platform; peer-memory hits require NVLink-equipped GPUs.",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 17
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "DCGM_FI_PROF_HOSTMEM_CACHE_HIT{gpu_uuid=~\"$gpu\"}",
+          "legendFormat": "{{node}} gpu{{gpu}} · host"
+        },
+        {
+          "expr": "DCGM_FI_PROF_PEERMEM_CACHE_HIT{gpu_uuid=~\"$gpu\"}",
+          "legendFormat": "{{node}} gpu{{gpu}} · peer"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "L2 Cache Miss Rates",
+      "description": "L2 miss rate for accesses to host memory and to peer GPU memory. Host-memory misses require a Grace-coupled platform; peer-memory misses require NVLink-equipped GPUs.",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 17
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gpu-prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "fillOpacity": 8
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "DCGM_FI_PROF_HOSTMEM_CACHE_MISS{gpu_uuid=~\"$gpu\"}",
+          "legendFormat": "{{node}} gpu{{gpu}} · host"
+        },
+        {
+          "expr": "DCGM_FI_PROF_PEERMEM_CACHE_MISS{gpu_uuid=~\"$gpu\"}",
+          "legendFormat": "{{node}} gpu{{gpu}} · peer"
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "type": "row",
+      "title": "Memory",
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 1
+      },
+      "panels": [
+        {
+          "id": 10,
+          "type": "bargauge",
+          "title": "Memory Used vs Total",
+          "description": "Device memory in use, against the memory installed on the card.",
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 0,
+            "y": 0
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gpu-prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit",
+              "min": 0,
+              "max": 1,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 0.85
+                  },
+                  {
+                    "color": "red",
+                    "value": 0.95
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "orientation": "horizontal",
+            "displayMode": "gradient",
+            "showUnfilled": true
+          },
+          "targets": [
+            {
+              "expr": "nvml_gpu_memory_used_bytes{gpu_uuid=~\"$gpu\", mig_uuid=\"\"} / nvml_gpu_memory_total_bytes{gpu_uuid=~\"$gpu\", mig_uuid=\"\"}",
+              "legendFormat": "{{node}} gpu{{gpu}}",
+              "instant": true
+            }
+          ]
+        },
+        {
+          "id": 11,
+          "type": "timeseries",
+          "title": "Memory Used Over Time",
+          "description": "Device memory in use.",
+          "gridPos": {
+            "h": 8,
+            "w": 16,
+            "x": 8,
+            "y": 0
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gpu-prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes",
+              "custom": {
+                "fillOpacity": 8
+              }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "expr": "nvml_gpu_memory_used_bytes{gpu_uuid=~\"$gpu\", mig_uuid=\"\"}",
+              "legendFormat": "{{node}} gpu{{gpu}} · used"
+            },
+            {
+              "expr": "nvml_gpu_memory_total_bytes{gpu_uuid=~\"$gpu\", mig_uuid=\"\"}",
+              "legendFormat": "{{node}} gpu{{gpu}} · total"
+            }
+          ]
+        },
+        {
+          "id": 12,
+          "type": "timeseries",
+          "title": "Memory Held by Each Pod",
+          "description": "Device memory held by the processes of one pod.",
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 8
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gpu-prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes",
+              "custom": {
+                "fillOpacity": 8
+              }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "expr": "sum by (namespace, pod, gpu_uuid) (nvml_process_gpu_memory_bytes{gpu_uuid=~\"$gpu\", mig_uuid=\"\"})",
+              "legendFormat": "{{namespace}}/{{pod}}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 24,
+      "type": "row",
+      "title": "Data Transfer",
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 2
+      },
+      "panels": [
+        {
+          "id": 13,
+          "type": "timeseries",
+          "title": "PCIe Throughput",
+          "description": "The rate of data transmitted and received over the PCIe bus, including both protocol headers and data payloads, in bytes per second.",
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 0,
+            "y": 0
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gpu-prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "Bps",
+              "custom": {
+                "fillOpacity": 8
+              }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "expr": "DCGM_FI_PROF_PCIE_TX_BYTES{gpu_uuid=~\"$gpu\"}",
+              "legendFormat": "{{node}} gpu{{gpu}} · tx"
+            },
+            {
+              "expr": "DCGM_FI_PROF_PCIE_RX_BYTES{gpu_uuid=~\"$gpu\"}",
+              "legendFormat": "{{node}} gpu{{gpu}} · rx"
+            }
+          ]
+        },
+        {
+          "id": 14,
+          "type": "timeseries",
+          "title": "NVLink Throughput",
+          "description": "The rate of data transmitted and received over NVLink, not including protocol headers, in bytes per second. Requires NVLink-equipped GPUs.",
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 8,
+            "y": 0
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gpu-prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "Bps",
+              "custom": {
+                "fillOpacity": 8
+              }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "expr": "DCGM_FI_PROF_NVLINK_TX_BYTES{gpu_uuid=~\"$gpu\"}",
+              "legendFormat": "{{node}} gpu{{gpu}} · tx"
+            },
+            {
+              "expr": "DCGM_FI_PROF_NVLINK_RX_BYTES{gpu_uuid=~\"$gpu\"}",
+              "legendFormat": "{{node}} gpu{{gpu}} · rx"
+            }
+          ]
+        },
+        {
+          "id": 15,
+          "type": "timeseries",
+          "title": "Chip-to-Chip Bandwidth",
+          "description": "Chip-to-chip bandwidth transmitted to and received from the CPU. Requires a Grace-coupled platform.",
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 16,
+            "y": 0
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gpu-prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "Bps",
+              "custom": {
+                "fillOpacity": 8
+              }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "expr": "DCGM_FI_PROF_C2C_TX_ALL_BYTES{gpu_uuid=~\"$gpu\"}",
+              "legendFormat": "{{node}} gpu{{gpu}} · tx"
+            },
+            {
+              "expr": "DCGM_FI_PROF_C2C_RX_ALL_BYTES{gpu_uuid=~\"$gpu\"}",
+              "legendFormat": "{{node}} gpu{{gpu}} · rx"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 25,
+      "type": "row",
+      "title": "Power & Thermals",
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 3
+      },
+      "panels": [
+        {
+          "id": 16,
+          "type": "gauge",
+          "title": "GPU Power Usage",
+          "description": "Current board power draw in watts.",
+          "gridPos": {
+            "h": 8,
+            "w": 6,
+            "x": 0,
+            "y": 0
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gpu-prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "watt",
+              "min": 0,
+              "max": 165,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 115
+                  },
+                  {
+                    "color": "red",
+                    "value": 148
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "orientation": "auto",
+            "showThresholdLabels": false,
+            "showThresholdMarkers": true
+          },
+          "targets": [
+            {
+              "expr": "nvml_gpu_power_watts{gpu_uuid=~\"$gpu\", mig_uuid=\"\"}",
+              "legendFormat": "{{node}} gpu{{gpu}}",
+              "instant": true
+            }
+          ]
+        },
+        {
+          "id": 17,
+          "type": "gauge",
+          "title": "GPU Temperature",
+          "description": "Current GPU core temperature in Celsius.",
+          "gridPos": {
+            "h": 8,
+            "w": 6,
+            "x": 6,
+            "y": 0
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gpu-prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "celsius",
+              "min": 0,
+              "max": 100,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 75
+                  },
+                  {
+                    "color": "red",
+                    "value": 85
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "orientation": "auto",
+            "showThresholdLabels": false,
+            "showThresholdMarkers": true
+          },
+          "targets": [
+            {
+              "expr": "nvml_gpu_temperature_celsius{gpu_uuid=~\"$gpu\", mig_uuid=\"\"}",
+              "legendFormat": "{{node}} gpu{{gpu}}",
+              "instant": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 26,
+      "type": "row",
+      "title": "Clocks",
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 4
+      },
+      "panels": [
+        {
+          "id": 18,
+          "type": "timeseries",
+          "title": "Clock Frequencies",
+          "description": "Current SM and memory clock frequency in MHz.",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 0
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gpu-prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "hertz",
+              "custom": {
+                "fillOpacity": 8
+              }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "expr": "nvml_gpu_clock_hertz{gpu_uuid=~\"$gpu\", mig_uuid=\"\"}",
+              "legendFormat": "{{node}} gpu{{gpu}} · {{clock}}"
+            }
+          ]
+        },
+        {
+          "id": 19,
+          "type": "state-timeline",
+          "title": "Clock Throttle Reasons",
+          "description": "Whether each clock-limiting reason is currently active.",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 0
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gpu-prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "custom": {
+                "lineWidth": 0,
+                "fillOpacity": 70
+              },
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "0": {
+                      "text": "Inactive",
+                      "color": "green",
+                      "index": 0
+                    },
+                    "1": {
+                      "text": "Active",
+                      "color": "red",
+                      "index": 1
+                    }
+                  }
+                }
+              ]
+            },
+            "overrides": []
+          },
+          "options": {
+            "mergeValues": true,
+            "showValue": "auto",
+            "alignValue": "center",
+            "rowHeight": 0.9
+          },
+          "targets": [
+            {
+              "expr": "nvml_gpu_clocks_event_reason_active{gpu_uuid=~\"$gpu\", mig_uuid=\"\"}",
+              "legendFormat": "{{node}} gpu{{gpu}} · {{reason}}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 27,
+      "type": "row",
+      "title": "Allocation & Support",
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 5
+      },
+      "panels": [
+        {
+          "id": 20,
+          "type": "table",
+          "title": "Entitlement",
+          "description": "The pod granted this device. Constant 1; the identity is in the labels.",
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 0
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gpu-prometheus"
+          },
+          "targets": [
+            {
+              "expr": "gpu_alloc_device_pod_info{gpu_uuid=~\"$gpu\"}",
+              "instant": true,
+              "format": "table"
+            }
+          ],
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true,
+                  "__name__": true,
+                  "job": true,
+                  "instance": true,
+                  "service": true,
+                  "endpoint": true,
+                  "node": true,
+                  "gpu": true,
+                  "Value": true
+                }
+              }
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": []
+          }
+        },
+        {
+          "id": 21,
+          "type": "table",
+          "title": "Metric Support Matrix",
+          "description": "Whether a GPU can produce a given metric: 1 supported, 0 not supported, absent when unknown.",
+          "gridPos": {
+            "h": 14,
+            "w": 24,
+            "x": 0,
+            "y": 8
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gpu-prometheus"
+          },
+          "targets": [
+            {
+              "expr": "gpu_metric_supported{gpu_uuid=~\"$gpu\"}",
+              "instant": true,
+              "format": "table"
+            }
+          ],
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true,
+                  "__name__": true,
+                  "job": true,
+                  "instance": true,
+                  "namespace": true,
+                  "pod": true,
+                  "service": true,
+                  "container": true,
+                  "endpoint": true,
+                  "node": true,
+                  "gpu": true,
+                  "GPU_I_ID": true
+                }
+              }
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "0": {
+                      "text": "Not supported on this GPU",
+                      "color": "text",
+                      "index": 0
+                    },
+                    "1": {
+                      "text": "Supported",
+                      "color": "green",
+                      "index": 1
+                    }
+                  }
+                }
+              ]
+            },
+            "overrides": []
+          }
+        }
+      ]
+    }
+  ]
+}
