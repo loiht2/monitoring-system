@@ -1,7 +1,7 @@
 {
   "uid": "gpu-hardware-mig",
-  "title": "GPU Hardware \u2014 MIG",
-  "description": "Per-instance view of a MIG-partitioned card: every panel here reports one GPU instance, not the whole physical device. Field definitions are shared with GPU Hardware \u2014 Device (the scope is the only difference between them). Utilization here is normalized to the instance, not the card, so a saturated instance can read close to 1.0 while the rest of the physical card sits idle \u2014 instance values must never be summed into a device-level figure. A MIG series carries gpu_uuid for the parent card, mig_uuid for the instance, and GPU_I_ID, which is the only identifier DCGM publishes for an instance.",
+  "title": "GPU Hardware — MIG",
+  "description": "Per-instance view of a MIG-partitioned card: every panel here reports one GPU instance, not the whole physical device. Field definitions are shared with GPU Hardware — Device (the scope is the only difference between them). Utilization here is normalized to the instance, not the card, so a saturated instance can read close to 1.0 while the rest of the physical card sits idle — instance values must never be summed into a device-level figure. A MIG series carries gpu_uuid for the parent card, mig_uuid for the instance, and GPU_I_ID, which is the only identifier DCGM publishes for an instance.",
   "tags": [
     "gpu",
     "hardware",
@@ -60,7 +60,7 @@
       "id": 1,
       "type": "gauge",
       "title": "GPU Utilization",
-      "description": "The fraction of time any portion of the graphics or compute engines were active.",
+      "description": "Percent of time the MIG instance was actively processing.",
       "gridPos": {
         "h": 8,
         "w": 6,
@@ -111,7 +111,7 @@
       "targets": [
         {
           "expr": "DCGM_FI_PROF_GR_ENGINE_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"}",
-          "legendFormat": "{{node}} gpu{{gpu}} \u00b7 {{GPU_I_PROFILE}}",
+          "legendFormat": "{{node}} gpu{{gpu}} · {{GPU_I_PROFILE}}",
           "instant": true
         }
       ]
@@ -120,7 +120,7 @@
       "id": 2,
       "type": "timeseries",
       "title": "SM Efficiency",
-      "description": "The fraction of time at least one warp was active on a multiprocessor, averaged over all multiprocessors.",
+      "description": "Percent of cycles where an SM had at least one warp resident.",
       "gridPos": {
         "h": 8,
         "w": 9,
@@ -143,7 +143,7 @@
       "targets": [
         {
           "expr": "DCGM_FI_PROF_SM_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"}",
-          "legendFormat": "{{node}} gpu{{gpu}} \u00b7 {{GPU_I_PROFILE}}"
+          "legendFormat": "{{node}} gpu{{gpu}} · {{GPU_I_PROFILE}}"
         }
       ]
     },
@@ -151,7 +151,7 @@
       "id": 3,
       "type": "timeseries",
       "title": "SM Occupancy",
-      "description": "The fraction of resident warps on a multiprocessor, relative to the maximum number of concurrent warps supported on a multiprocessor.",
+      "description": "Percent of number of warps resident on an SM.",
       "gridPos": {
         "h": 8,
         "w": 9,
@@ -174,7 +174,7 @@
       "targets": [
         {
           "expr": "DCGM_FI_PROF_SM_OCCUPANCY{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"}",
-          "legendFormat": "{{node}} gpu{{gpu}} \u00b7 {{GPU_I_PROFILE}}"
+          "legendFormat": "{{node}} gpu{{gpu}} · {{GPU_I_PROFILE}}"
         }
       ]
     },
@@ -182,7 +182,7 @@
       "id": 4,
       "type": "timeseries",
       "title": "Tensor Core Utilization",
-      "description": "The fraction of cycles the tensor (HMMA / IMMA) pipe was active.",
+      "description": "Percent of cycles when any tensor pipe was active, and per pipe: HMMA, IMMA, DFMA.",
       "gridPos": {
         "h": 8,
         "w": 12,
@@ -205,15 +205,19 @@
       "targets": [
         {
           "expr": "DCGM_FI_PROF_PIPE_TENSOR_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"}",
-          "legendFormat": "{{node}} gpu{{gpu}} \u00b7 {{GPU_I_PROFILE}} \u00b7 tensor (all)"
+          "legendFormat": "{{node}} gpu{{gpu}} · {{GPU_I_PROFILE}} · tensor (all)"
         },
         {
           "expr": "DCGM_FI_PROF_PIPE_TENSOR_HMMA_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"}",
-          "legendFormat": "{{node}} gpu{{gpu}} \u00b7 {{GPU_I_PROFILE}} \u00b7 HMMA"
+          "legendFormat": "{{node}} gpu{{gpu}} · {{GPU_I_PROFILE}} · HMMA"
         },
         {
           "expr": "DCGM_FI_PROF_PIPE_TENSOR_IMMA_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"}",
-          "legendFormat": "{{node}} gpu{{gpu}} \u00b7 {{GPU_I_PROFILE}} \u00b7 IMMA"
+          "legendFormat": "{{node}} gpu{{gpu}} · {{GPU_I_PROFILE}} · IMMA"
+        },
+        {
+          "expr": "DCGM_FI_PROF_PIPE_TENSOR_DFMA_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"}",
+          "legendFormat": "{{node}} gpu{{gpu}} · {{GPU_I_PROFILE}} · DFMA"
         }
       ]
     },
@@ -221,7 +225,7 @@
       "id": 5,
       "type": "timeseries",
       "title": "FP & Integer Utilization",
-      "description": "The fraction of cycles the FP64, FP32 (FMA) and FP16 pipes were active.",
+      "description": "Percent of cycles when the FP64, FP32, FP16 and integer pipes were active.",
       "gridPos": {
         "h": 8,
         "w": 12,
@@ -244,19 +248,19 @@
       "targets": [
         {
           "expr": "DCGM_FI_PROF_PIPE_FP64_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"}",
-          "legendFormat": "{{node}} gpu{{gpu}} \u00b7 {{GPU_I_PROFILE}} \u00b7 FP64"
+          "legendFormat": "{{node}} gpu{{gpu}} · {{GPU_I_PROFILE}} · FP64"
         },
         {
           "expr": "DCGM_FI_PROF_PIPE_FP32_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"}",
-          "legendFormat": "{{node}} gpu{{gpu}} \u00b7 {{GPU_I_PROFILE}} \u00b7 FP32"
+          "legendFormat": "{{node}} gpu{{gpu}} · {{GPU_I_PROFILE}} · FP32"
         },
         {
           "expr": "DCGM_FI_PROF_PIPE_FP16_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"}",
-          "legendFormat": "{{node}} gpu{{gpu}} \u00b7 {{GPU_I_PROFILE}} \u00b7 FP16"
+          "legendFormat": "{{node}} gpu{{gpu}} · {{GPU_I_PROFILE}} · FP16"
         },
         {
           "expr": "DCGM_FI_PROF_PIPE_INT_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"}",
-          "legendFormat": "{{node}} gpu{{gpu}} \u00b7 {{GPU_I_PROFILE}} \u00b7 integer"
+          "legendFormat": "{{node}} gpu{{gpu}} · {{GPU_I_PROFILE}} · integer"
         }
       ]
     },
@@ -276,7 +280,7 @@
           "id": 6,
           "type": "bargauge",
           "title": "Memory Used vs Total",
-          "description": "Device memory in use, against the memory installed on the card.",
+          "description": "Memory in use, against the memory installed on the card.",
           "gridPos": {
             "h": 8,
             "w": 8,
@@ -326,8 +330,8 @@
           },
           "targets": [
             {
-              "expr": "nvml_gpu_memory_used_bytes{gpu_uuid=~\"$gpu\", mig_uuid!=\"\"} / nvml_gpu_memory_total_bytes{gpu_uuid=~\"$gpu\", mig_uuid!=\"\"}",
-              "legendFormat": "{{node}} gpu{{gpu}} \u00b7 {{mig_uuid}}",
+              "expr": "DCGM_FI_DEV_FB_USED{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"} / (DCGM_FI_DEV_FB_USED{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"} + DCGM_FI_DEV_FB_FREE{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"})",
+              "legendFormat": "{{node}} gpu{{gpu}} · {{GPU_I_PROFILE}}",
               "instant": true
             }
           ]
@@ -336,7 +340,7 @@
           "id": 7,
           "type": "timeseries",
           "title": "Memory Used Over Time",
-          "description": "Device memory in use.",
+          "description": "Memory in use.",
           "gridPos": {
             "h": 8,
             "w": 16,
@@ -358,12 +362,8 @@
           },
           "targets": [
             {
-              "expr": "nvml_gpu_memory_used_bytes{gpu_uuid=~\"$gpu\", mig_uuid!=\"\"}",
-              "legendFormat": "{{node}} gpu{{gpu}} \u00b7 {{mig_uuid}} \u00b7 used"
-            },
-            {
-              "expr": "nvml_gpu_memory_total_bytes{gpu_uuid=~\"$gpu\", mig_uuid!=\"\"}",
-              "legendFormat": "{{node}} gpu{{gpu}} \u00b7 {{mig_uuid}} \u00b7 total"
+              "expr": "DCGM_FI_DEV_FB_USED{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"} * 1048576",
+              "legendFormat": "{{node}} gpu{{gpu}} · {{GPU_I_PROFILE}} · used"
             }
           ]
         },
@@ -371,10 +371,10 @@
           "id": 8,
           "type": "timeseries",
           "title": "Memory Held by Each Pod",
-          "description": "Device memory held by the processes of one pod.",
+          "description": "Memory in use per process, summed per pod.",
           "gridPos": {
             "h": 8,
-            "w": 24,
+            "w": 12,
             "x": 0,
             "y": 8
           },
@@ -394,7 +394,38 @@
           "targets": [
             {
               "expr": "sum by (namespace, pod, gpu_uuid, mig_uuid) (nvml_process_gpu_memory_bytes{gpu_uuid=~\"$gpu\", mig_uuid!=\"\"})",
-              "legendFormat": "{{namespace}}/{{pod}} \u00b7 {{mig_uuid}}"
+              "legendFormat": "{{namespace}}/{{pod}} · {{mig_uuid}}"
+            }
+          ]
+        },
+        {
+          "id": 9,
+          "type": "timeseries",
+          "title": "Memory Bandwidth Utilization",
+          "description": "Percent of cycles the device memory interface is active.",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 8
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gpu-prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit",
+              "custom": {
+                "fillOpacity": 8
+              }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "expr": "DCGM_FI_PROF_DRAM_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"}",
+              "legendFormat": "{{node}} gpu{{gpu}} · {{GPU_I_PROFILE}}"
             }
           ]
         }
@@ -413,10 +444,10 @@
       },
       "panels": [
         {
-          "id": 9,
+          "id": 13,
           "type": "table",
           "title": "Metric Support Matrix",
-          "description": "Whether a GPU can produce a given metric: 1 supported, 0 not supported, absent when unknown.",
+          "description": "Whether an entity can produce a metric: 1 supported, 0 not supported, absent when unknown.",
           "gridPos": {
             "h": 14,
             "w": 24,
@@ -429,7 +460,7 @@
           },
           "targets": [
             {
-              "expr": "gpu_metric_supported{gpu_uuid=~\"$gpu\", mig_uuid!=\"\"}",
+              "expr": "gpu_metric_supported{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"}",
               "instant": true,
               "format": "table"
             }
