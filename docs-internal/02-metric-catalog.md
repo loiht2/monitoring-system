@@ -1,9 +1,10 @@
 # 02 — Metric catalog
 
-Every metric the system collects, in the order the dashboards present it. Definitions are NVIDIA's own
-wording from the DCGM and NVML references; they are definitions, not guidance.
+Every metric the dashboards present, in the order they present it. **Grouping and field selection come from**
+`metrics/hw-metrics/[our]gpu-metrics-general.csv` and `[our]gpu-metrics-mig-slice.csv`, which are the source of
+truth for what is collected and how it is organised.
 
-Three scopes, one per dashboard:
+Panel names follow those CSVs except for five, listed in § 0.2, where a name was kept deliberately.
 
 | Scope | Dashboard | Applies to |
 |---|---|---|
@@ -11,9 +12,51 @@ Three scopes, one per dashboard:
 | [MIG](#2-mig-level) | GPU Hardware — MIG | One GPU instance on a partitioned card |
 | [Software](#3-software-ebpf) | GPU Software — eBPF | One pod's CUDA API behaviour |
 
-**Availability** records the hardware a field needs. A field the fleet cannot produce is still catalogued and
-still gets a panel, so the dashboard stays portable across fleets; `gpu_metric_supported` is what tells a
-reader whether a blank panel is unsupported or merely idle ([10](10-metric-support-signal.md)).
+## 0. Sourcing rules
+
+**DCGM is the source for device readings.** NVML remains the source for exactly three things, because DCGM
+cannot supply them:
+
+| Kept on NVML | Why |
+|---|---|
+| GPU Utilization per Pod | DCGM has no per-process field |
+| Memory Held by Each Pod | DCGM has no per-process field |
+| Clocks Throttle Reasons | DCGM exposes a single **bitmask**; NVML gives one 0/1 series per reason, which is what a state timeline needs |
+
+**The NVML exporter keeps emitting its device metrics even though no panel plots them.** They are the
+independent cross-check that caught HAMi over-reserving memory by 5.7 GB, and the NVML probe is what makes
+`gpu_metric_supported` a measurement rather than an inference ([10 § 3.1](10-metric-support-signal.md)).
+Retiring them from the dashboards is a presentation decision, not a collection one.
+
+### 0.1 Field names are dcgm-exporter's, not the C API's
+
+`dcgm_fields.h` names these fields `DCGM_FI_PROF_SM_UTIL_RATIO`, `…_DRAM_UTIL_RATIO` and so on.
+**dcgm-exporter's own CSV uses the older `_ACTIVE` spellings for the same field IDs**, and that CSV is what we
+edit, so the `_ACTIVE` names are what this catalog records.
+
+**An unknown name is fatal**: the exporter then serves nothing at all, losing every field that worked
+([09 — R-DCGM-FIELDS](09-risks-and-open-questions.md)). Nine names below are catalogued but deliberately
+**not** in this cluster's ConfigMap, because they have never been proven to load here and cannot produce data
+on an A30 anyway: the four cache fields, both C2C fields, both NVLink fields, and DFMA. Adding one on a fleet
+that needs it means diffing the served `# HELP` count before and after.
+
+### 0.2 Five panel names deliberately diverge from the CSVs
+
+| CSV name | Panel name here | Why |
+|---|---|---|
+| GPU Utilization per process | **GPU Utilization per Pod** | Values are summed per pod and the host PID never becomes a label ([01 § 2.1](01-architecture.md)), so "per process" would describe something the dashboard does not show |
+| GPU Memory Utilization | **Memory Used vs Total**, **Memory Used Over Time** | One CSV row backs two panels: a current comparison against installed memory, and a trend. Splitting them was confirmed as the wanted shape |
+| GPU Memory per process | **Memory Held by Each Pod** | Same per-pod reasoning as above |
+| *(MIG)* Memory Utilization | **Memory Used vs Total**, **Memory Used Over Time** | Kept identical to the device dashboard so the two read consistently |
+| *(MIG)* Memory per process | **Memory Held by Each Pod** | As above |
+
+Everything else uses the CSV name verbatim. A future CSV edit that renames a panel should be taken as
+authoritative unless it collides with one of these five.
+
+### 0.3 Units that bite
+
+`DCGM_FI_DEV_FB_USED` and `FB_FREE` are **MiB**, not bytes. Any panel or comparison against a byte-valued
+metric must multiply by 1048576.
 
 ---
 
@@ -21,99 +64,104 @@ reader whether a blank panel is unsupported or merely idle ([10](10-metric-suppo
 
 ### 1.1 Performance
 
-| Panel | Definition | Metric | Source | Availability |
+| Panel | Definition | Field | ID | Source |
 |---|---|---|---|---|
-| GPU Utilization | Percent of time over the past sample period during which one or more kernels was executing on the GPU. | `nvml_gpu_utilization_ratio` | NVML `nvmlDeviceGetUtilizationRates` | All GPUs, Kepler+ |
-| GPU Utilization per Pod | GPU utilization attributed to the processes of one pod. | `nvml_process_sm_utilization_ratio` | NVML `nvmlDeviceGetProcessUtilization` | All GPUs, Kepler+. Unavailable on a MIG parent |
-| SM Activity | The fraction of time at least one warp was active on a multiprocessor, averaged over all multiprocessors. | `DCGM_FI_PROF_SM_ACTIVE` | DCGM 1002 | Volta+ |
-| SM Occupancy | The fraction of resident warps on a multiprocessor, relative to the maximum number of concurrent warps supported on a multiprocessor. | `DCGM_FI_PROF_SM_OCCUPANCY` | DCGM 1003 | Volta+ |
-| Tensor Core Utilization | The fraction of cycles the tensor (HMMA / IMMA) pipe was active. | `DCGM_FI_PROF_PIPE_TENSOR_ACTIVE`, `…_HMMA_ACTIVE`, `…_IMMA_ACTIVE` | DCGM 1004 / 1013 / 1014 | Tensor: Volta+. HMMA: Volta+. IMMA: Turing+ |
-| FP & Integer Utilization | The fraction of cycles the FP64, FP32 (FMA) and FP16 pipes were active. | `DCGM_FI_PROF_PIPE_FP64_ACTIVE`, `…_FP32_ACTIVE`, `…_FP16_ACTIVE`, `…_PIPE_INT_ACTIVE` | DCGM 1006 / 1007 / 1008 / 1016 | Volta+. Integer reports `metric not enabled` on A30 |
-| DRAM Activity | The fraction of cycles where data was sent to or received from device memory. | `DCGM_FI_PROF_DRAM_ACTIVE` | DCGM 1005 | Volta+ |
-| L2 Cache Hit Rates | L2 hit rate for accesses to host memory and to peer GPU memory. | `DCGM_FI_PROF_HOSTMEM_CACHE_HIT`, `…_PEERMEM_CACHE_HIT` | DCGM 1080 / 1082 | Host: Grace-coupled (GH200/GB200). Peer: NVLink Hopper+ |
-| L2 Cache Miss Rates | L2 miss rate for accesses to host memory and to peer GPU memory. | `DCGM_FI_PROF_HOSTMEM_CACHE_MISS`, `…_PEERMEM_CACHE_MISS` | DCGM 1081 / 1083 | As above |
+| GPU Utilization | Percent of time the GPU was actively processing. | `DCGM_FI_DEV_GPU_UTIL` | 203 | DCGM |
+| GPU Utilization per Pod | GPU utilization per process, summed per pod. | `nvmlDeviceGetProcessUtilization` | — | NVML |
+| SM Activity | Percent of cycles where an SM had at least one warp resident. | `DCGM_FI_PROF_SM_ACTIVE` | 1002 | DCGM |
+| SM Occupancy | Percent of number of warps resident on an SM. | `DCGM_FI_PROF_SM_OCCUPANCY` | 1003 | DCGM |
+| Tensor Core Utilization | Percent of cycles when any tensor pipe was active, and per pipe: HMMA, IMMA, DFMA. | `DCGM_FI_PROF_PIPE_TENSOR_ACTIVE`, `…_HMMA_ACTIVE`, `…_IMMA_ACTIVE`, `…_DFMA_ACTIVE` | 1004, 1014, 1013, 1015 | DCGM |
+| FP & Integer Utilization | Percent of cycles when the FP64, FP32, FP16 and integer pipes were active. | `DCGM_FI_PROF_PIPE_FP64_ACTIVE`, `…_FP32_ACTIVE`, `…_FP16_ACTIVE`, `…_INT_ACTIVE` | 1006, 1007, 1008, 1016 | DCGM |
+| Cache Hit Rates | Percent of requests to host memory and to peer memory that were cache hits. | `DCGM_FI_PROF_HOSTMEM_CACHE_HIT`, `…_PEERMEM_CACHE_HIT` | 1080, 1082 | DCGM |
+| Cache Miss Rates | Percent of requests to host memory and to peer memory that were cache misses. | `DCGM_FI_PROF_HOSTMEM_CACHE_MISS`, `…_PEERMEM_CACHE_MISS` | 1081, 1083 | DCGM |
 
-`DCGM_FI_PROF_PIPE_TENSOR_DFMA_ACTIVE` (Hopper+) and `DCGM_FI_PROF_DMMA_CYCLES_ACTIVE_TOTAL` (Ampere+, raw
-cycles with no ratio field) are catalogued but not collected. DMMA is **not a known field** in the DCGM build
-shipped here, and an unknown field is fatal to the whole exporter
-([09 — R-DCGM-FIELDS](09-risks-and-open-questions.md)).
+**HMMA is 1014 and IMMA is 1013.** They are easy to transpose, and an earlier revision of this catalog had
+them the wrong way round.
 
 ### 1.2 Memory
 
-| Panel | Definition | Metric | Source | Availability |
+| Panel | Definition | Field | ID | Source |
 |---|---|---|---|---|
-| Memory Used vs Total | Device memory in use, against the memory installed on the card. | `nvml_gpu_memory_used_bytes`, `nvml_gpu_memory_total_bytes` | NVML `nvmlDeviceGetMemoryInfo` | All GPUs, Kepler+ |
-| Memory Used Over Time | Device memory in use. | `nvml_gpu_memory_used_bytes` | NVML `nvmlDeviceGetMemoryInfo` | All GPUs, Kepler+ |
-| Memory Held by Each Pod | Device memory held by the processes of one pod. | `nvml_process_gpu_memory_bytes` | NVML `nvmlDeviceGetComputeRunningProcesses` | All GPUs, Kepler+ |
+| Memory Used vs Total | Memory in use, against the memory installed on the card. | `DCGM_FI_DEV_FB_USED`, `DCGM_FI_DEV_FB_FREE` | 252, 251 | DCGM |
+| Memory Used Over Time | Memory in use. | `DCGM_FI_DEV_FB_USED` | 252 | DCGM |
+| Memory Held by Each Pod | Memory in use per process, summed per pod. | `nvmlDeviceGetComputeRunningProcesses_v3` | — | NVML |
+| Memory Bandwidth Utilization | Percent of cycles the device memory interface is active. | `DCGM_FI_PROF_DRAM_ACTIVE` | 1005 | DCGM |
 
-### 1.3 Data Transfer
+The first three keep the shape they already had; bandwidth is added as a fourth panel rather than replacing
+them.
 
-| Panel | Definition | Metric | Source | Availability |
+### 1.3 Interconnect
+
+| Panel | Definition | Field | ID | Source |
 |---|---|---|---|---|
-| PCIe Throughput | The rate of data transmitted and received over the PCIe bus, including both protocol headers and data payloads, in bytes per second. | `DCGM_FI_PROF_PCIE_TX_BYTES`, `…_RX_BYTES` | DCGM 1009 / 1010 | Maxwell+ |
-| NVLink Throughput | The rate of data transmitted and received over NVLink, not including protocol headers, in bytes per second. | `DCGM_FI_PROF_NVLINK_TX_BYTES`, `…_RX_BYTES` | DCGM 1011 / 1012 | NVLink-equipped only. **Both A30s report all links inactive** |
-| Chip-to-Chip Bandwidth | Chip-to-chip bandwidth transmitted to and received from the CPU. | `DCGM_FI_PROF_C2C_TX_ALL_BYTES`, `…_C2C_RX_ALL_BYTES` | DCGM 1076 / 1078 | Grace-coupled (GH200/GB200) only |
+| PCIe Transmission Throughput | Rate of data received by, and transmitted from, the GPU over PCIe. | `DCGM_FI_PROF_PCIE_RX_BYTES`, `…_TX_BYTES` | 1010, 1009 | DCGM |
+| NVLink Transmission Throughput | Rate of data received by, and transmitted from, the GPU over NVLink. | `DCGM_FI_PROF_NVLINK_RX_BYTES`, `…_TX_BYTES` | 1012, 1011 | DCGM |
+| Chip to Chip Bandwidth | Total bytes received over, and transmitted over, the chip-to-chip link. | `DCGM_FI_PROF_C2C_RX_ALL_BYTES`, `…_TX_ALL_BYTES` | 1078, 1076 | DCGM |
 
 ### 1.4 Power & Thermals
 
-| Panel | Definition | Metric | Source | Availability |
+| Panel | Definition | Field | ID | Source |
 |---|---|---|---|---|
-| GPU Power Usage | Current board power draw in watts. | `nvml_gpu_power_watts` | NVML `nvmlDeviceGetPowerUsage` | All GPUs, Kepler+ |
-| GPU Temperature | Current GPU core temperature in Celsius. | `nvml_gpu_temperature_celsius` | NVML `nvmlDeviceGetTemperature` | All GPUs, Kepler+ |
+| GPU Power Usage | Power usage of the device in watts. | `DCGM_FI_DEV_POWER_USAGE` | 155 | DCGM |
+| GPU Temperature | Current GPU device temperature in Celsius. | `DCGM_FI_DEV_GPU_TEMP` | 150 | DCGM |
 
 ### 1.5 Clocks
 
-| Panel | Definition | Metric | Source | Availability |
+| Panel | Definition | Field | ID | Source |
 |---|---|---|---|---|
-| Clock Frequencies | Current SM and memory clock frequency in MHz. | `nvml_gpu_clock_hertz{clock="sm"\|"mem"}` | NVML `nvmlDeviceGetClockInfo` | All GPUs, Kepler+ |
-| Clock Throttle Reasons | Whether each clock-limiting reason is currently active. | `nvml_gpu_clocks_event_reason_active{reason=…}` | NVML `nvmlDeviceGetCurrentClocksEventReasons` | All GPUs, Kepler+ |
+| Clock Frequencies | Current SM and memory clock frequency in MHz. | `DCGM_FI_DEV_SM_CLOCK`, `DCGM_FI_DEV_MEM_CLOCK` | 100, 101 | DCGM |
+| Clocks Throttle Reasons | Fraction of the interval each throttle reason was active. | `nvmlDeviceGetCurrentClocksEventReasons` | — | **NVML** |
 
 ### 1.6 Allocation and support
 
-| Panel | Definition | Metric | Source |
-|---|---|---|---|
-| Entitlement | The pod granted this device. Constant 1; the identity is in the labels. | `gpu_alloc_device_pod_info` | Kubernetes API |
-| Metric Support Matrix | Whether a GPU can produce a given metric: 1 supported, 0 not supported, absent when unknown. | `gpu_metric_supported` | NVML probe, and a recording rule for DCGM |
+| Panel | Definition | Metric |
+|---|---|---|
+| Entitlement | The pod granted this device. Constant 1; the identity is in the labels. | `gpu_alloc_device_pod_info` |
+| Metric Support Matrix | Whether an entity can produce a metric: 1 supported, 0 not supported, absent when unknown. | `gpu_metric_supported` |
 
 ---
 
 ## 2. MIG level
 
-Same fields, scoped to one GPU instance. Definitions are identical to the device level — only the scope
-differs — so the two dashboards read consistently.
+The same fields scoped to one GPU instance, read from the `GPU_I` entity. Definitions match the device level
+wherever the field is the same; only the scope differs.
 
-A MIG series carries `gpu_uuid` for the **parent card**, `mig_uuid` for the instance, and `GPU_I_ID`, which is
-the only identifier DCGM publishes for an instance ([01 § 3.1](01-architecture.md)).
+A MIG series carries `gpu_uuid` for the **parent card**, `mig_uuid` for the instance, and `GPU_I_ID`, the only
+identifier DCGM publishes for an instance ([01 § 3.1](01-architecture.md)). `gpu_metric_supported` is keyed
+the same way, and a partitioned card is skipped by the device matrix
+([10 § 4.1](10-metric-support-signal.md)).
 
 ### 2.1 Performance
 
-| Panel | Definition | Metric | Source |
+| Panel | Definition | Field | ID |
 |---|---|---|---|
-| GPU Utilization | The fraction of time any portion of the graphics or compute engines were active. | `DCGM_FI_PROF_GR_ENGINE_ACTIVE` | DCGM 1001 |
-| SM Efficiency | The fraction of time at least one warp was active on a multiprocessor, averaged over all multiprocessors. | `DCGM_FI_PROF_SM_ACTIVE` | DCGM 1002 |
-| SM Occupancy | The fraction of resident warps on a multiprocessor, relative to the maximum number of concurrent warps supported on a multiprocessor. | `DCGM_FI_PROF_SM_OCCUPANCY` | DCGM 1003 |
-| Tensor Core Utilization | The fraction of cycles the tensor (HMMA / IMMA) pipe was active. | `DCGM_FI_PROF_PIPE_TENSOR_ACTIVE`, `…_HMMA_ACTIVE`, `…_IMMA_ACTIVE` | DCGM 1004 / 1013 / 1014 |
-| FP & Integer Utilization | The fraction of cycles the FP64, FP32 (FMA) and FP16 pipes were active. | `DCGM_FI_PROF_PIPE_FP64_ACTIVE`, `…_FP32_ACTIVE`, `…_FP16_ACTIVE`, `…_PIPE_INT_ACTIVE` | DCGM 1006 / 1007 / 1008 / 1016 |
-
-All are Ampere+ with MIG enabled. **Utilization is normalized to the instance, not the card** — a saturated
-`1g.6gb` slice holding 14 of 56 SMs reads ~1.0, measured ([§ 4](#4-mig-utilization-is-instance-normalized)).
+| GPU Utilization | Percent of time the MIG instance was actively processing. | `DCGM_FI_PROF_GR_ENGINE_ACTIVE` | 1001 |
+| SM Efficiency | Percent of cycles where an SM had at least one warp resident. | `DCGM_FI_PROF_SM_ACTIVE` | 1002 |
+| SM Occupancy | Percent of number of warps resident on an SM. | `DCGM_FI_PROF_SM_OCCUPANCY` | 1003 |
+| Tensor Core Utilization | Percent of cycles when any tensor pipe was active, and per pipe: HMMA, IMMA, DFMA. | `DCGM_FI_PROF_PIPE_TENSOR_ACTIVE`, `…_HMMA_ACTIVE`, `…_IMMA_ACTIVE`, `…_DFMA_ACTIVE` | 1004, 1014, 1013, 1015 |
+| FP & Integer Utilization | Percent of cycles when the FP64, FP32, FP16 and integer pipes were active. | `DCGM_FI_PROF_PIPE_FP64_ACTIVE`, `…_FP32_ACTIVE`, `…_FP16_ACTIVE`, `…_INT_ACTIVE` | 1006, 1007, 1008, 1016 |
 
 ### 2.2 Memory
 
-| Panel | Definition | Metric | Source |
-|---|---|---|---|
-| Memory Used vs Total | Device memory in use inside the instance, against the memory assigned to it. | `nvml_gpu_memory_used_bytes{mig_uuid!=""}`, `nvml_gpu_memory_total_bytes{mig_uuid!=""}` | NVML on the instance handle |
-| Memory Used Over Time | Device memory in use inside the instance. | `nvml_gpu_memory_used_bytes{mig_uuid!=""}` | NVML on the instance handle |
-| Memory Held by Each Pod | Device memory held by the processes of one pod inside the instance. | `nvml_process_gpu_memory_bytes{mig_uuid!=""}` | NVML on the instance handle |
+| Panel | Definition | Field | ID | Source |
+|---|---|---|---|---|
+| Memory Used vs Total | Memory in use inside the instance, against the memory assigned to it. | `DCGM_FI_DEV_FB_USED`, `DCGM_FI_DEV_FB_FREE` | 252, 251 | DCGM |
+| Memory Used Over Time | Memory in use inside the instance. | `DCGM_FI_DEV_FB_USED` | 252 | DCGM |
+| Memory Held by Each Pod | Memory in use per process inside the instance, summed per pod. | `nvmlDeviceGetComputeRunningProcesses_v3` | — | NVML |
+| Memory Bandwidth Utilization | Percent of cycles the device memory interface is active. | `DCGM_FI_PROF_DRAM_ACTIVE` | 1005 | DCGM |
 
-Per-process memory is the only per-process metric that survives MIG; per-process utilization is unavailable
-on any MIG handle.
+Per-process memory is the only per-process metric that survives MIG; per-process utilization is unavailable on
+any MIG handle.
+
+### 2.3 Support
+
+The metric support matrix, filtered to instances.
 
 ---
 
 ## 3. Software (eBPF)
 
-Per-pod CUDA API behaviour, traced by uprobes on the CUDA driver library. Aggregated by
+Per-pod CUDA API behaviour traced by uprobes on the CUDA driver library. Aggregated by
 **`k8s_namespace_name`** and **`k8s_pod_name`**; the series also carry `gpu_uuid`.
 
 | Group | Metrics |
@@ -125,10 +173,9 @@ Per-pod CUDA API behaviour, traced by uprobes on the CUDA driver library. Aggreg
 | Errors | `ebpf_cuda_errors_total` |
 | HAMi enforcement | `ebpf_hami_compute_throttle_duration_seconds`, `ebpf_hami_oom_events_total` |
 
-Eight of these twenty have produced data on this cluster. The rest are not broken: PyTorch's caching
-allocator stops calling `cudaMalloc` after warm-up, no workload here uses CUDA Graphs, device barriers or
-event timing, and the HAMi families need enforcement that is not happening
-([05 § validation](05-exporter-ebpf.md)).
+Eight of the twenty have produced data here. The rest are not broken: PyTorch's caching allocator stops
+calling `cudaMalloc` after warm-up, no workload uses CUDA Graphs, device barriers or event timing, and the
+HAMi families need enforcement that is not happening ([05](05-exporter-ebpf.md)).
 
 ---
 
@@ -143,8 +190,8 @@ Measured on a partitioned A30, one `1g.6gb` instance holding **14 of the card's 
 | device-normalized would have read | ~0.25 |
 
 An instance at 100% does not mean the card is busy, and instance utilizations must never be summed into a
-device figure — each is a ratio against a different denominator. There is also **no device-level profiling
-series on a partitioned card**: only instance entities are reported.
+device figure. There is also **no device-level profiling series on a partitioned card**: only instance
+entities are reported.
 
 ---
 

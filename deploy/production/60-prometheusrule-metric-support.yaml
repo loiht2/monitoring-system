@@ -32,9 +32,9 @@ spec:
         - record: gpu_metric_supported
           expr: |
             (
-              group by (gpu_uuid) (DCGM_FI_PROF_GR_ENGINE_ACTIVE)
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_PROF_GR_ENGINE_ACTIVE)
               or
-              group by (gpu_uuid) (DCGM_FI_DEV_FB_USED) * 0
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_DEV_FB_USED) * 0
             )
             and on() (max(up{job="nvidia-dcgm-exporter"}) == 1)
           labels:
@@ -43,9 +43,9 @@ spec:
         - record: gpu_metric_supported
           expr: |
             (
-              group by (gpu_uuid) (DCGM_FI_PROF_SM_ACTIVE)
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_PROF_SM_ACTIVE)
               or
-              group by (gpu_uuid) (DCGM_FI_DEV_FB_USED) * 0
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_DEV_FB_USED) * 0
             )
             and on() (max(up{job="nvidia-dcgm-exporter"}) == 1)
           labels:
@@ -54,9 +54,9 @@ spec:
         - record: gpu_metric_supported
           expr: |
             (
-              group by (gpu_uuid) (DCGM_FI_PROF_SM_OCCUPANCY)
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_PROF_SM_OCCUPANCY)
               or
-              group by (gpu_uuid) (DCGM_FI_DEV_FB_USED) * 0
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_DEV_FB_USED) * 0
             )
             and on() (max(up{job="nvidia-dcgm-exporter"}) == 1)
           labels:
@@ -65,9 +65,9 @@ spec:
         - record: gpu_metric_supported
           expr: |
             (
-              group by (gpu_uuid) (DCGM_FI_PROF_PIPE_TENSOR_ACTIVE)
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_PROF_PIPE_TENSOR_ACTIVE)
               or
-              group by (gpu_uuid) (DCGM_FI_DEV_FB_USED) * 0
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_DEV_FB_USED) * 0
             )
             and on() (max(up{job="nvidia-dcgm-exporter"}) == 1)
           labels:
@@ -76,9 +76,9 @@ spec:
         - record: gpu_metric_supported
           expr: |
             (
-              group by (gpu_uuid) (DCGM_FI_PROF_PIPE_TENSOR_HMMA_ACTIVE)
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_PROF_PIPE_TENSOR_HMMA_ACTIVE)
               or
-              group by (gpu_uuid) (DCGM_FI_DEV_FB_USED) * 0
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_DEV_FB_USED) * 0
             )
             and on() (max(up{job="nvidia-dcgm-exporter"}) == 1)
           labels:
@@ -87,9 +87,9 @@ spec:
         - record: gpu_metric_supported
           expr: |
             (
-              group by (gpu_uuid) (DCGM_FI_PROF_PIPE_TENSOR_IMMA_ACTIVE)
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_PROF_PIPE_TENSOR_IMMA_ACTIVE)
               or
-              group by (gpu_uuid) (DCGM_FI_DEV_FB_USED) * 0
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_DEV_FB_USED) * 0
             )
             and on() (max(up{job="nvidia-dcgm-exporter"}) == 1)
           labels:
@@ -98,9 +98,9 @@ spec:
         - record: gpu_metric_supported
           expr: |
             (
-              group by (gpu_uuid) (DCGM_FI_PROF_PIPE_FP64_ACTIVE)
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_PROF_PIPE_FP64_ACTIVE)
               or
-              group by (gpu_uuid) (DCGM_FI_DEV_FB_USED) * 0
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_DEV_FB_USED) * 0
             )
             and on() (max(up{job="nvidia-dcgm-exporter"}) == 1)
           labels:
@@ -109,9 +109,9 @@ spec:
         - record: gpu_metric_supported
           expr: |
             (
-              group by (gpu_uuid) (DCGM_FI_PROF_PIPE_FP32_ACTIVE)
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_PROF_PIPE_FP32_ACTIVE)
               or
-              group by (gpu_uuid) (DCGM_FI_DEV_FB_USED) * 0
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_DEV_FB_USED) * 0
             )
             and on() (max(up{job="nvidia-dcgm-exporter"}) == 1)
           labels:
@@ -120,9 +120,9 @@ spec:
         - record: gpu_metric_supported
           expr: |
             (
-              group by (gpu_uuid) (DCGM_FI_PROF_PIPE_FP16_ACTIVE)
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_PROF_PIPE_FP16_ACTIVE)
               or
-              group by (gpu_uuid) (DCGM_FI_DEV_FB_USED) * 0
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_DEV_FB_USED) * 0
             )
             and on() (max(up{job="nvidia-dcgm-exporter"}) == 1)
           labels:
@@ -131,9 +131,9 @@ spec:
         - record: gpu_metric_supported
           expr: |
             (
-              group by (gpu_uuid) (DCGM_FI_PROF_PIPE_INT_ACTIVE)
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_PROF_PIPE_INT_ACTIVE)
               or
-              group by (gpu_uuid) (DCGM_FI_DEV_FB_USED) * 0
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_DEV_FB_USED) * 0
             )
             and on() (max(up{job="nvidia-dcgm-exporter"}) == 1)
           labels:
@@ -142,9 +142,9 @@ spec:
         - record: gpu_metric_supported
           expr: |
             (
-              group by (gpu_uuid) (DCGM_FI_PROF_DRAM_ACTIVE)
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_PROF_DRAM_ACTIVE)
               or
-              group by (gpu_uuid) (DCGM_FI_DEV_FB_USED) * 0
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_DEV_FB_USED) * 0
             )
             and on() (max(up{job="nvidia-dcgm-exporter"}) == 1)
           labels:
@@ -153,9 +153,9 @@ spec:
         - record: gpu_metric_supported
           expr: |
             (
-              group by (gpu_uuid) (DCGM_FI_PROF_PCIE_RX_BYTES)
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_PROF_PCIE_RX_BYTES)
               or
-              group by (gpu_uuid) (DCGM_FI_DEV_FB_USED) * 0
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_DEV_FB_USED) * 0
             )
             and on() (max(up{job="nvidia-dcgm-exporter"}) == 1)
           labels:
@@ -164,9 +164,9 @@ spec:
         - record: gpu_metric_supported
           expr: |
             (
-              group by (gpu_uuid) (DCGM_FI_PROF_PCIE_TX_BYTES)
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_PROF_PCIE_TX_BYTES)
               or
-              group by (gpu_uuid) (DCGM_FI_DEV_FB_USED) * 0
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_DEV_FB_USED) * 0
             )
             and on() (max(up{job="nvidia-dcgm-exporter"}) == 1)
           labels:

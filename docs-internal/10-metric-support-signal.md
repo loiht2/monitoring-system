@@ -8,13 +8,13 @@ A panel with no line has two very different causes: the GPU **cannot** produce t
 ## 1. The metric
 
 ```
-gpu_metric_supported{gpu_uuid, mig_uuid, metric, source} 1|0
+gpu_metric_supported{gpu_uuid, mig_uuid, GPU_I_ID, metric, source} 1|0
 ```
 
 | Value | Meaning |
 |---|---|
-| `1` | This GPU produces this metric |
-| `0` | This GPU **cannot** produce it — hardware or driver does not implement it |
+| `1` | This entity produces this metric |
+| `0` | This entity **cannot** produce it — hardware or driver does not implement it |
 | *absent* | Unknown. Never guessed |
 
 `metric` carries the exposed metric name (`nvml_gpu_power_watts`, `DCGM_FI_PROF_PIPE_INT_ACTIVE`), so a panel
@@ -22,21 +22,32 @@ joins on the name it already plots. `source` is `nvml` or `dcgm`.
 
 ### 1.1 Why this may emit 0, when the rest of the system must not
 
-[02 § 5.2](02-metric-catalog.md) forbids substituting zero for an unreadable measurement, because a zero is
+[02 § 5](02-metric-catalog.md) forbids substituting zero for an unreadable measurement, because a zero is
 indistinguishable from a real reading and corrupts every average, rate and alert over the series.
 
 **That rule governs measurements. This is a capability fact.** Here `0` is not a missing measurement standing
-in for a real one — it is the assertion "this GPU does not implement this", which is exactly the information
-the dashboard needs and cannot get from absence alone. The two are not in conflict, and `gpu_metric_supported`
-must not be "corrected" to omit its zeros.
+in for a real one — it is the assertion "this entity does not implement this", which is exactly the
+information the dashboard needs and cannot get from absence alone. The two are not in conflict, and
+`gpu_metric_supported` must not be "corrected" to omit its zeros.
 
 ---
 
-## 2. Two producers, because only one half can be probed
+## 2. The unit is an entity, not a card
 
-### 2.1 NVML — probed, authoritative
+A whole card and a MIG instance are different things to ask about, and DCGM reports them as different
+entities. **The unit of this signal is `(gpu_uuid, GPU_I_ID)`**: a whole card carries no `GPU_I_ID`, a
+partitioned card is described only by its instances.
 
-The exporter already inspects every NVML return code. It maps them directly:
+Treating a card as the unit would collapse every instance into one verdict for a scope DCGM no longer
+describes, and would leave instances with no verdict at all.
+
+---
+
+## 3. Two producers, because only one half can be probed
+
+### 3.1 NVML — probed, authoritative
+
+The exporter inspects every NVML return code and maps it directly:
 
 | NVML return | Emitted |
 |---|---|
@@ -48,16 +59,22 @@ The third row is the load-bearing one. A transient failure — driver busy, devi
 evidence of unsupported, and recording it as `0` would leave a permanent false claim in a series the dashboard
 presents as fact. Unknown stays unknown.
 
-### 2.2 DCGM — inferred from evidence
+The exporter probes each handle it holds, parent and MIG instance alike, so it already emits verdicts at both
+scopes.
+
+### 3.2 DCGM — inferred from evidence
 
 DCGM is a separate exporter; we cannot ask it what a GPU supports. A `PrometheusRule` derives it instead. For
-field `F` and GPU `g`, `F` is unsupported when **all three** hold:
+field `F` and entity `e`, `F` is unsupported when **all three** hold:
 
 1. the DCGM exporter is up — otherwise absence means outage,
-2. `g` reports some other DCGM field — otherwise absence means that GPU is not being collected at all,
-3. `F` is absent for `g`.
+2. `e` reports some other DCGM field — otherwise absence means that entity is not being collected at all,
+3. `F` is absent for `e`.
 
 Conditions 1 and 2 are what stop an outage from being reported to operators as a hardware limitation.
+
+The rule groups by `(gpu_uuid, GPU_I_ID)`. `DCGM_FI_DEV_FB_USED` is the evidence metric and already reports
+one row per entity, so the two sides line up without further work.
 
 **This requires the field to be requested.** A field absent from the counters ConfigMap proves nothing, so
 fields believed unsupported are **kept in the list** rather than removed — the opposite of the rule for fields
@@ -70,7 +87,7 @@ DCGM rejects outright.
 
 Confusing these two costs every DCGM metric on the node.
 
-### 2.3 One name from an exporter and a recording rule
+### 3.3 One name from an exporter and a recording rule
 
 [01 § 3.3](01-architecture.md) forbids one metric name being emitted by two **exporters**, because duplicate
 series break the scrape. A recording rule is a Prometheus-side derivation evaluated after ingestion, not a
@@ -83,37 +100,35 @@ same explicit justification.
 
 ---
 
-## 3. Presentation
+## 4. Presentation
 
 | Surface | Shows |
 |---|---|
-| **Support matrix** — one table panel | Every metric × GPU, as `Supported` / `Not supported on this GPU` |
-| **Per-panel note** — a stat under each timeseries | The metrics unsupported on the currently selected GPUs. Empty when all are supported |
+| Device support matrix | Every metric × whole card |
+| MIG support matrix | Every metric × instance |
 
-The per-panel note answers the question where the operator is already looking; the matrix gives the whole
-picture. Neither invents text for a metric whose support is unknown — an absent flag renders nothing.
+Neither invents text for a metric whose support is unknown — an absent flag renders nothing.
+
+### 4.1 A partitioned card is skipped by the device matrix
+
+Once MIG is enabled, DCGM stops reporting device-level profiling fields and reports instance entities instead
+([02 § 4](02-metric-catalog.md)). There is nothing at device scope left to call supported or unsupported.
+
+**The device matrix skips such a card rather than showing it as unknown.** Synthesising a `0` row would
+assert "not supported" about a scope that no longer exists on that card — a claim, not a measurement.
+Skipping says only what is true: this card is described per instance, and its verdicts live on the MIG
+dashboard.
+
+| Card | Device matrix | MIG matrix |
+|---|---|---|
+| Whole card | one row per metric | not listed |
+| Partitioned card | **skipped** | one row per metric, per instance |
 
 ---
 
-## 4. What this does not do
+## 5. What this does not do
 
 - It does not explain **why** a metric is unsupported. Architecture, driver version and MIG mode all cause it,
   and distinguishing them needs information neither exporter has.
 - It does not cover eBPF metrics. Those are per-pod behaviour, not device capability.
 - It says nothing about a metric that is supported but idle. That is `No data`, and correctly so.
-
-
----
-
-## 5. The DCGM half is per-card, so MIG instances have no DCGM support rows
-
-The recording rule in § 2.2 groups by `gpu_uuid` and nothing else, so it emits one verdict per physical card.
-A MIG instance therefore gets **no DCGM-sourced support row at all**, and the MIG dashboard's support matrix
-shows only the NVML-probed entries.
-
-The consequence is narrow but real: on a partitioned card, a blank DCGM profiling panel cannot be
-distinguished from an unsupported one, which is exactly the question this metric exists to answer. The NVML
-half is unaffected, because the exporter probes each handle including instances.
-
-Fixing it means grouping the rule by `(gpu_uuid, GPU_I_ID)` and emitting a row per entity. That is a change to
-the rule's shape, not a bug in it, and is deliberately left undone rather than half-done.

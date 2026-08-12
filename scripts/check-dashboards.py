@@ -58,6 +58,15 @@ def check(paths):
                 exprs = " ".join(t.get("expr", "") for t in p.get("targets", []))
                 if exprs and 'GPU_I_ID!=""' not in exprs and 'mig_uuid!=""' not in exprs:
                     fail.append(f"{path}: '{p['title']}' is not filtered to MIG instances")
+        # (g) NVML is retired from the hardware dashboards except for the three
+        # panels the catalog keeps on it, because DCGM has no equivalent field.
+        NVML_OK = {"GPU Utilization per Pod", "Memory Held by Each Pod", "Clocks Throttle Reasons"}
+        if "hardware" in path:
+            for p in ls:
+                exprs = " ".join(t.get("expr", "") for t in p.get("targets", []))
+                if "nvml_" in exprs and p["title"] not in NVML_OK:
+                    fail.append(f"{path}: '{p['title']}' uses nvml_* but is not one of the three "
+                                f"panels DCGM cannot supply")
         # (f) no HAMi metrics anywhere
         for p in ls:
             for t in p.get("targets", []):

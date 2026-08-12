@@ -415,6 +415,130 @@ git add -A
 
 ---
 
+### Task 7: DCGM support verdicts per MIG instance
+
+The DCGM recording rule groups by `gpu_uuid` alone, so it emits one verdict per card and none per instance. On
+a partitioned card a blank DCGM panel cannot be told from an unsupported one.
+
+**Files:** `deploy/a30-node/60-prometheusrule-metric-support.yaml`, `deploy/production/60-…`
+
+- [ ] **Step 1: Write the failing test**
+
+```bash
+../phase-0-backend/scripts/promq.sh 'count(gpu_metric_supported{source="dcgm", GPU_I_ID!=""})'
+```
+
+Expected: `(empty result)`.
+
+- [ ] **Step 2: Group by entity in all 13 rules**
+
+```promql
+(
+  group by (gpu_uuid, GPU_I_ID) (<FIELD>)
+  or
+  group by (gpu_uuid, GPU_I_ID) (DCGM_FI_DEV_FB_USED) * 0
+)
+and on() (max(up{job="nvidia-dcgm-exporter"}) == 1)
+```
+
+`DCGM_FI_DEV_FB_USED` already emits one row per entity, so evidence and field line up.
+
+- [ ] **Step 3: Apply, wait one 30s evaluation, re-run the test**
+
+Expected: non-zero.
+
+- [ ] **Step 4: Commit** — `derive dcgm support verdicts per mig instance`
+
+---
+
+### Task 8: Device dashboard rebuilt to the new catalog
+
+**Files:** `dashboards/gpu-hardware-device.json`
+
+- [ ] **Step 1: Extend the checker, and watch the new check fail**
+
+Add to `scripts/check-dashboards.py`: the device dashboard may reference `nvml_*` **only** for the three
+panels catalog § 0 keeps on NVML — GPU Utilization per Pod, Memory Held by Each Pod, Clocks Throttle Reasons.
+Any other `nvml_` reference is a failure.
+
+```bash
+python3 scripts/check-dashboards.py dashboards/gpu-hardware-device.json
+```
+
+Expected: FAIL — today's device dashboard plots `nvml_gpu_utilization_ratio`, memory, power, temperature and
+clocks.
+
+- [ ] **Step 2: Rebuild the rows** per catalog § 1
+
+| Row | Panels |
+|---|---|
+| Performance | GPU Utilization, GPU Utilization per Pod, SM Activity, SM Occupancy, Tensor Core Utilization, FP & Integer Utilization, Cache Hit Rates, Cache Miss Rates |
+| Memory | Memory Used vs Total, Memory Used Over Time, Memory Held by Each Pod, **Memory Bandwidth Utilization** |
+| Interconnect | PCIe Transmission Throughput, NVLink Transmission Throughput, Chip to Chip Bandwidth |
+| Power & Thermals | GPU Power Usage, GPU Temperature |
+| Clocks | Clock Frequencies, Clocks Throttle Reasons |
+| Allocation & Support | Entitlement, Metric Support Matrix |
+
+`FB_USED`/`FB_FREE` are **MiB** — multiply by 1048576 for any bytes-unit panel. Device panels exclude MIG
+instance rows.
+
+- [ ] **Step 3: Checker passes, then verify every query live** — classify DATA / IDLE / UNAVAILABLE.
+
+- [ ] **Step 4: Commit** — `rebuild the device dashboard on dcgm`
+
+---
+
+### Task 9: MIG dashboard rebuilt
+
+**Files:** `dashboards/gpu-hardware-mig.json`
+
+- [ ] **Step 1: Run the checker, see the same NVML violation**
+- [ ] **Step 2: Rebuild** per catalog § 2
+
+| Row | Panels |
+|---|---|
+| Performance | GPU Utilization, SM Efficiency, SM Occupancy, Tensor Core Utilization, FP & Integer Utilization |
+| Memory | Memory Used vs Total, Memory Used Over Time, Memory Held by Each Pod, Memory Bandwidth Utilization |
+| Support | Metric Support Matrix |
+
+Every panel filters to instances. Shared descriptions stay byte-identical to the device dashboard — the
+checker compares only panels backed by the same metric, so `GPU Utilization` may legitimately differ
+(`GR_ENGINE_ACTIVE` here, `DEV_GPU_UTIL` there).
+
+- [ ] **Step 3: Checker passes over both dashboards together**
+- [ ] **Step 4: Commit** — `rebuild the mig dashboard on dcgm`
+
+---
+
+### Task 10: Deploy and verify under load
+
+- [ ] **Step 1:** re-create the two ConfigMaps and restart Grafana
+- [ ] **Step 2:** `kubectl apply -f deploy/a30-node/90-loadgen-gpu-burn.yaml`
+- [ ] **Step 3:** one representative panel per row returns data through Grafana's proxy
+- [ ] **Step 4:** the device matrix and device memory panels correctly reflect DCGM's own scoping.
+
+  This check changed shape from the NVML-era draft. NVML enumerates the MIG parent handle regardless of MIG
+  mode, so an NVML-sourced device count needed a `mig_uuid=""` filter to avoid double-counting a partitioned
+  card as two GPUs. **DCGM does not enumerate a device-scope row for a partitioned card at all** — it reports
+  only the instance entity. So for the DCGM-sourced panels built in Task 8, the correct device-scope count on
+  this fleet (one whole card, one partitioned card) is **1, not 2** — the partitioned card is correctly
+  absent from device scope, which is exactly what the support matrix's skip rule (§0, doc 10 §4.1) describes.
+  Verify:
+
+  ```bash
+  ../phase-0-backend/scripts/promq.sh 'count(count by (gpu_uuid) (DCGM_FI_DEV_FB_USED{GPU_I_ID=""}))'
+  ```
+
+  Expected: `1` — the whole card only. The MIG dashboard is where the partitioned card's memory appears
+  (`DCGM_FI_DEV_FB_USED{GPU_I_ID!=""}`).
+- [ ] **Step 5:** MIG matrix now shows **both** `nvml` and `dcgm` sources
+- [ ] **Step 6:** tear down, commit
+
+**No ConfigMap change is required.** Every field the new catalog plots is already collected; the only
+uncollected names are the nine hardware-gated ones, which stay out deliberately.
+
+---
+
 ## Self-review
 
 **Spec coverage.** Catalog §1 → Task 2. §2 → Task 3. §3 (eBPF) → Task 4 Step 2, identity only, since that
