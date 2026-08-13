@@ -1,10 +1,14 @@
 # Advanced monitoring: a native UI over this system's metrics.
 #
-# Both Services are ClusterIP and stay that way in this phase. The API proxies ARBITRARY
-# PromQL with no authentication, so anything that can reach it can read every metric in
-# the cluster. Reach it with `kubectl port-forward`, exactly as Prometheus and Grafana
-# are reached here. Keycloak is a prerequisite for ML Platform integration
-# (docs-internal/12 § 5), not a later nicety.
+# Both Services are NodePort so the UI is reachable from a workstation browser. A
+# ClusterIP plus `kubectl port-forward` binds to loopback ON THE NODE, so nothing off the
+# node can reach it, and the page renders empty.
+#
+# THIS EXPOSES AN UNAUTHENTICATED API ON THE NODE ADDRESS. /query proxies ARBITRARY
+# PromQL, so anything that can route to 192.168.6.123 can read every metric in the
+# cluster. That is acceptable only because this is an isolated validation cluster.
+# Keycloak is a prerequisite for ML Platform integration (docs-internal/12 § 5), and this
+# manifest must not be copied to a routable network before that lands.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -27,6 +31,10 @@ spec:
           env:
             - name: PROMETHEUS_URL
               value: http://prometheus-operated.gpu-monitoring.svc.cluster.local:9090
+            # The UI's origin as the browser sees it. Missing here, every request is
+            # blocked by CORS and the page renders empty with no server-side error.
+            - name: CORS_ORIGINS
+              value: http://192.168.6.123:30802,http://localhost:3002,http://127.0.0.1:3002
           readinessProbe:
             httpGet: { path: /healthz, port: http }
           resources:
@@ -39,8 +47,9 @@ metadata:
   name: advanced-monitoring-api
   namespace: gpu-monitoring
 spec:
+  type: NodePort
   selector: { app: advanced-monitoring-api }
-  ports: [{ name: http, port: 8000, targetPort: http }]
+  ports: [{ name: http, port: 8000, targetPort: http, nodePort: 30800 }]
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -62,9 +71,10 @@ spec:
           image: REPLACE_ME_UI
           ports: [{ name: http, containerPort: 3002 }]
           env:
-            # Browser-reachable address. With port-forward this is the forwarded API port.
+            # Read by the BROWSER, not by this pod, so it must be an address the
+            # browser can route to — the node's NodePort, not in-cluster DNS.
             - name: MONITORING_API
-              value: http://127.0.0.1:8000
+              value: http://192.168.6.123:30800
           readinessProbe:
             httpGet: { path: /, port: http }
           resources:
@@ -77,5 +87,6 @@ metadata:
   name: advanced-monitoring-ui
   namespace: gpu-monitoring
 spec:
+  type: NodePort
   selector: { app: advanced-monitoring-ui }
-  ports: [{ name: http, port: 3002, targetPort: http }]
+  ports: [{ name: http, port: 3002, targetPort: http, nodePort: 30802 }]

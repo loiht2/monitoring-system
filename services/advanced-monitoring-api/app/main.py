@@ -17,16 +17,16 @@ PROMETHEUS_URL = os.environ.get(
 
 app = FastAPI(title="advanced-monitoring-api")
 
-# The UI is a separate origin during local development (3002 vs 8000). In-cluster the
-# UI proxies server-side, so this is a dev convenience, not the production path.
-#
-# Both spellings of loopback are listed. A browser treats localhost and 127.0.0.1 as
-# different origins, so allowing only one leaves the page stuck on "Loading…" with the
-# reason visible only in the browser console.
+# The UI runs on a different origin to this API, so every browser call is cross-origin.
+# The allowlist is configurable because the right value depends on how the UI is reached:
+# loopback under port-forward, the node address under NodePort. A browser treats
+# localhost, 127.0.0.1 and the node IP as three different origins, so an origin missing
+# here leaves the page stuck on "Loading…" with the reason only in the browser console.
+CORS_ORIGINS = [o.strip() for o in os.environ.get(
+    "CORS_ORIGINS", "http://localhost:3002,http://127.0.0.1:3002").split(",") if o.strip()]
+
 app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3002", "http://127.0.0.1:3002"],
-    allow_methods=["GET"], allow_headers=["*"])
+    CORSMiddleware, allow_origins=CORS_ORIGINS, allow_methods=["GET"], allow_headers=["*"])
 
 _client: httpx.AsyncClient | None = None
 

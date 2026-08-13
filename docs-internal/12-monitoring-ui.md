@@ -143,18 +143,35 @@ merge is a file move.
 
 ## 5. Exposure
 
-**No authentication in the standalone phase.** Reached by `ClusterIP` plus `kubectl port-forward`, exactly as
-Prometheus and Grafana are reached on the validation cluster today.
+**No authentication, and reachable on the node address.** Both Services are `NodePort` — the API on 30800,
+the UI on 30802 — because a `ClusterIP` plus `kubectl port-forward` binds to loopback *on the node*, so a
+browser on any other machine reaches nothing and the page renders empty.
 
-**This is a validation-phase decision with a hard boundary.** The API proxies *arbitrary PromQL*, so anything
-that can reach it can read every metric in the cluster. Two rules follow:
+**This is the weakest point in the system and it is deliberate, not accidental.** `/query` proxies arbitrary
+PromQL, so anything that can route to the node can read every metric in the cluster. It is acceptable only
+because this is an isolated validation cluster.
 
-- The Service stays `ClusterIP`. No NodePort, no Ingress, in this phase.
+Two rules follow:
+
+- **This manifest must not be applied on a routable network** before authentication lands.
 - **Keycloak is a prerequisite for ML Platform integration, not a later nicety.** That platform's
   `/monitoring/*` routes sit behind `require_auth`, which despite its name is admin-only; this API must reach
   parity before it is deployed beside them.
 
----
+### 5.1 Three origins, three chances to render an empty page
+
+The UI calls the API from the browser, so every request is cross-origin, and a browser treats
+`localhost:3002`, `127.0.0.1:3002` and `192.168.6.123:30802` as three different origins. Two settings must
+agree with how the UI is actually reached:
+
+| Setting | Read by | Must be |
+|---|---|---|
+| `MONITORING_API` | the **browser**, via `env.js` | An address the browser can route to — the node's NodePort, never in-cluster DNS |
+| `CORS_ORIGINS` | the API | The UI's origin exactly as the browser sees it |
+
+Both failures look identical from the server side — the pod is healthy, the page loads, and nothing renders.
+The reason appears only in the browser console. `CORS_ORIGINS` is an environment variable rather than a
+constant for this reason: the right value depends on the access path, not on the code.
 
 ## 6. Grafana is not deleted
 
