@@ -1,0 +1,14 @@
+:root {
+  --bg-dark: #0f1219;
+  --bg-panel: #161b22;
+  --bg-panel-light: #1f2530;
+  --border-color: #30363d;
+  --text-main: #f0f6fc;
+  --text-muted: #8b949e;
+  --accent: #6c8ef5;
+  --green: #22c55e;
+  --amber: #f59e0b;
+  --red: #ef4444;
+}
+body { margin: 0; background: var(--bg-dark); color: var(--text-main);
+       font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; }

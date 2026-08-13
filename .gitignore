@@ -19,3 +19,8 @@ kubeconfig
 *.kubeconfig
 snapshots/
 .worktrees/
+
+# Next.js build output for the monitoring UI
+.next/
+next-env.d.ts
+*.tsbuildinfo
