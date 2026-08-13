@@ -5,6 +5,8 @@ import { StatPanel } from './panels/StatPanel';
 import { GaugePanel } from './panels/GaugePanel';
 import { BarGaugePanel } from './panels/BarGaugePanel';
 import { TablePanel } from './panels/TablePanel';
+import { StateTimelinePanel } from './panels/StateTimelinePanel';
+import { HeatmapPanel } from './panels/HeatmapPanel';
 import { PanelFrame } from './PanelFrame';
 
 export function PanelGrid({ panels, vars, rangeSeconds, tick }: {
@@ -29,8 +31,10 @@ function render(p: PanelSpec, vars: Record<string, string[]>, rangeSeconds: numb
     case 'gauge':      return <GaugePanel spec={p} vars={vars} tick={tick} />;
     case 'bargauge':   return <BarGaugePanel spec={p} vars={vars} tick={tick} />;
     case 'table':      return <TablePanel spec={p} vars={vars} tick={tick} />;
+    case 'state-timeline': return <StateTimelinePanel spec={p} vars={vars} rangeSeconds={rangeSeconds} tick={tick} />;
+    case 'heatmap':        return <HeatmapPanel spec={p} vars={vars} rangeSeconds={rangeSeconds} tick={tick} />;
     default:
-      // state-timeline and heatmap arrive in Task 9. Say so rather than render blank.
+      // Any panel type the spec gains later renders as an explicit empty state, not blank.
       return <PanelFrame title={p.title} description={p.description} state="nodata">
         <div /></PanelFrame>;
   }

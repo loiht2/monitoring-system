@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Enforce the catalog contract on dashboard JSON. Usage: check-dashboards.py <file>..."""
-import json, re, sys, itertools
+import json, re, sys, itertools, pathlib
 
 def leaves(panels):
     for p in panels:
@@ -76,6 +76,16 @@ def check(paths):
     for (title, _metrics), byfile in shared.items():
         if len(byfile) > 1 and len(set(byfile.values())) > 1:
             fail.append(f"description for '{title}' differs across dashboards")
+    # (h) panels.json must match the dashboards it was generated from. It is a build
+    # artifact committed into the API image, so nothing else would notice it going stale.
+    spec_path = pathlib.Path("services/advanced-monitoring-api/app/panels.json")
+    if spec_path.exists():
+        spec = json.loads(spec_path.read_text())
+        in_spec = sum(len(r["panels"]) for d in spec["dashboards"] for r in d["rows"])
+        in_dash = sum(1 for d in dashes.values() for p in leaves(d["panels"]) if p.get("targets"))
+        if in_spec != in_dash:
+            fail.append(f"panels.json has {in_spec} panels, dashboards have {in_dash} — "
+                        f"re-run scripts/extract-panels.py")
     return fail
 
 if __name__ == "__main__":
