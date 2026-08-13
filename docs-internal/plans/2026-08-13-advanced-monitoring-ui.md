@@ -529,9 +529,12 @@ app = FastAPI(title="advanced-monitoring-api")
 
 # The UI is a separate origin during local development (3002 vs 8000). In-cluster the
 # UI proxies server-side, so this is a dev convenience, not the production path.
+# Both spellings of loopback: a browser treats localhost and 127.0.0.1 as different
+# origins, so allowing only one leaves the page stuck on "Loading…".
 app.add_middleware(
-    CORSMiddleware, allow_origins=["http://localhost:3002"], allow_methods=["GET"],
-    allow_headers=["*"])
+    CORSMiddleware,
+    allow_origins=["http://localhost:3002", "http://127.0.0.1:3002"],
+    allow_methods=["GET"], allow_headers=["*"])
 
 _client: httpx.AsyncClient | None = None
 
