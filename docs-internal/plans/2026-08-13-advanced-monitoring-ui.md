@@ -1756,7 +1756,14 @@ RUN npm run build
 FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-COPY --from=build /app/public ./public
+# Next's standalone server.js listens on :3000 unless told otherwise. Without these the
+# container port, the EXPOSE and the readiness probe all point at a port nothing serves.
+ENV PORT=3002
+ENV HOSTNAME=0.0.0.0
+# public/ must be owned by the runtime user: the entrypoint writes env.js into it, and as
+# root-owned the write fails, the entrypoint carries on, /env.js 404s, and the page loads
+# with no data — visible only in the browser console.
+COPY --from=build --chown=node:node /app/public ./public
 COPY --from=build /app/.next/standalone ./
 COPY --from=build /app/.next/static ./.next/static
 COPY docker-entrypoint.sh ./
@@ -1764,6 +1771,15 @@ RUN chmod +x docker-entrypoint.sh
 USER node
 EXPOSE 3002
 ENTRYPOINT ["./docker-entrypoint.sh"]
+```
+
+`services/advanced-monitoring-ui/.dockerignore` — without it, `COPY . .` in the build stage overwrites the
+`npm ci` node_modules with the host's:
+
+```
+node_modules
+.next
+tsconfig.tsbuildinfo
 ```
 
 `services/advanced-monitoring-ui/docker-entrypoint.sh` — runtime config, so one image works on any cluster:
@@ -1869,6 +1885,9 @@ spec:
 ```
 
 - [ ] **Step 4: Build, push and deploy**
+
+Tags must be unique per build. The pods use the default `imagePullPolicy: IfNotPresent`, so re-pushing an
+existing tag does not cause a re-pull and the old image keeps running — a fix appears to have no effect.
 
 ```bash
 SHA=$(git rev-parse --short HEAD)

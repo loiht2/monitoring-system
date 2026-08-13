@@ -1,0 +1,81 @@
+# Advanced monitoring: a native UI over this system's metrics.
+#
+# Both Services are ClusterIP and stay that way in this phase. The API proxies ARBITRARY
+# PromQL with no authentication, so anything that can reach it can read every metric in
+# the cluster. Reach it with `kubectl port-forward`, exactly as Prometheus and Grafana
+# are reached here. Keycloak is a prerequisite for ML Platform integration
+# (docs-internal/12 § 5), not a later nicety.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: advanced-monitoring-api
+  namespace: gpu-monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: advanced-monitoring-api }
+  template:
+    metadata:
+      labels: { app: advanced-monitoring-api }
+    spec:
+      imagePullSecrets:
+        - name: harbor-pull-secret
+      containers:
+        - name: api
+          image: REPLACE_ME_API
+          ports: [{ name: http, containerPort: 8000 }]
+          env:
+            - name: PROMETHEUS_URL
+              value: http://prometheus-operated.gpu-monitoring.svc.cluster.local:9090
+          readinessProbe:
+            httpGet: { path: /healthz, port: http }
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits:   { memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: advanced-monitoring-api
+  namespace: gpu-monitoring
+spec:
+  selector: { app: advanced-monitoring-api }
+  ports: [{ name: http, port: 8000, targetPort: http }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: advanced-monitoring-ui
+  namespace: gpu-monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: advanced-monitoring-ui }
+  template:
+    metadata:
+      labels: { app: advanced-monitoring-ui }
+    spec:
+      imagePullSecrets:
+        - name: harbor-pull-secret
+      containers:
+        - name: ui
+          image: REPLACE_ME_UI
+          ports: [{ name: http, containerPort: 3002 }]
+          env:
+            # Browser-reachable address. With port-forward this is the forwarded API port.
+            - name: MONITORING_API
+              value: http://127.0.0.1:8000
+          readinessProbe:
+            httpGet: { path: /, port: http }
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits:   { memory: 512Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: advanced-monitoring-ui
+  namespace: gpu-monitoring
+spec:
+  selector: { app: advanced-monitoring-ui }
+  ports: [{ name: http, port: 3002, targetPort: http }]
