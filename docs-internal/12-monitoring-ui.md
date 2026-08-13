@@ -76,7 +76,7 @@ by environment, matching how `quota_api` resolves its own upstreams.
 | `GET /catalog` | The panel spec: dashboards, rows, panels, queries |
 | `GET /query?q=&time=` | Prometheus instant query |
 | `GET /query_range?q=&start=&end=&step=` | Prometheus range query |
-| `GET /label/{name}/values` | Template-variable values, e.g. `gpu_uuid` |
+| `GET /label/{name}/values?start=&end=` | Template-variable values, e.g. `gpu_uuid`, scoped to a window |
 | `GET /healthz` | Liveness |
 
 `/query` and `/query_range` **raise** on upstream failure (503/502); `/catalog` and `/label/...` **degrade**
@@ -89,7 +89,11 @@ The Grafana dashboards carry one variable, `gpu`, over `label_values(gpu_uuid)`,
 option. Panel expressions embed it as `gpu_uuid=~"$gpu"`.
 
 The UI reproduces this: it fetches values from `/label/gpu_uuid/values`, and substitutes the selection into
-`$gpu` as a regex alternation before sending the query. `All` substitutes `.*`. Substitution happens **in the
+`$gpu` as a regex alternation before sending the query.
+
+**The lookup is scoped to the selected time range.** Unscoped, Prometheus answers from the whole retention
+window, so a device that no longer exists is still offered. Measured on the validation cluster: a deleted MIG
+instance was still listed hours later, and selecting it would have produced a panel that could never draw. `All` substitutes `.*`. Substitution happens **in the
 frontend immediately before the request**, so the stored spec stays identical to the Grafana source.
 
 ---

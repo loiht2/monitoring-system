@@ -376,8 +376,19 @@ async def query_range(client, base: str, q: str, start: float, end: float, step:
                       {"query": q, "start": start, "end": end, "step": f"{step}s"})
 
 
-async def label_values(client, base: str, label: str) -> list:
-    data = await _get(client, f"{base}/api/v1/label/{label}/values", {})
+async def label_values(client, base: str, label: str,
+                       start: float | None = None, end: float | None = None) -> list:
+    """Values seen for a label, optionally scoped to a time window.
+
+    Unscoped, Prometheus answers from the whole retention window, so a device removed
+    days ago is still listed.
+    """
+    params: dict = {}
+    if start is not None:
+        params["start"] = start
+    if end is not None:
+        params["end"] = end
+    data = await _get(client, f"{base}/api/v1/label/{label}/values", params)
     return data if isinstance(data, list) else []
 ```
 
@@ -565,9 +576,10 @@ async def get_query_range(q: str = Query(...), start: float = Query(...),
 
 
 @app.get("/label/{name}/values")
-async def get_label_values(name: str):
+async def get_label_values(name: str, start: float | None = None, end: float | None = None):
     try:
-        return {"values": await prometheus.label_values(_client, PROMETHEUS_URL, name)}
+        return {"values": await prometheus.label_values(
+            _client, PROMETHEUS_URL, name, start=start, end=end)}
     except prometheus.UpstreamError as exc:
         return {"values": [], "error": str(exc)}
 ```
@@ -863,8 +875,8 @@ export const api = {
     `/query?q=${encodeURIComponent(q)}`),
   queryRange: (q: string, start: number, end: number, step: number) => get<{ result: any[] }>(
     `/query_range?q=${encodeURIComponent(q)}&start=${start}&end=${end}&step=${step}`),
-  labelValues: (name: string) => get<{ values: string[]; error?: string }>(
-    `/label/${encodeURIComponent(name)}/values`),
+  labelValues: (name: string, start: number, end: number) => get<{ values: string[]; error?: string }>(
+    `/label/${encodeURIComponent(name)}/values?start=${start}&end=${end}`),
 };
 ```
 
@@ -1459,7 +1471,11 @@ export default function Page() {
   });
 
   useEffect(() => { api.getCatalog().then(setCat).catch(() => setCat(null)); }, []);
-  useEffect(() => { api.labelValues('gpu_uuid').then((r) => setGpus(r.values)).catch(() => {}); }, []);
+  useEffect(() => {
+    // Scoped to the selected range: unscoped, a deleted device still appears.
+    const end = Math.floor(Date.now() / 1000);
+    api.labelValues('gpu_uuid', end - range, end).then((r) => setGpus(r.values)).catch(() => {});
+  }, [range, tick]);
   useEffect(() => { localStorage.setItem('adv_mon_refresh', String(refresh)); }, [refresh]);
   useEffect(() => {
     if (!refresh) return;
