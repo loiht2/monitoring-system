@@ -32,6 +32,15 @@ def run(tmp):
                    check=True)
     return json.loads(out.read_text())
 
+def run_real(tmp):
+    """Run the extractor over the checked-in dashboards. Per-dashboard variable ownership
+    can only be asserted against the real set, where `pod` exists on one dashboard only."""
+    out = pathlib.Path(tmp) / "panels.json"
+    sources = sorted(str(p) for p in pathlib.Path("dashboards").glob("*.json"))
+    subprocess.run([sys.executable, "scripts/extract-panels.py", *sources, "-o", str(out)],
+                   check=True)
+    return json.loads(out.read_text())
+
 def test_extracts_dashboard_identity():
     with tempfile.TemporaryDirectory() as tmp:
         got = run(tmp)
@@ -68,3 +77,28 @@ def test_panel_without_targets_is_dropped():
         for r in run(tmp)["dashboards"][0]["rows"]:
             for p in r["panels"]:
                 assert p["targets"], f"{p['title']} has no targets but was kept"
+
+def test_dashboard_carries_its_description():
+    """The context banner text is the dashboard's own description; nothing else has it."""
+    with tempfile.TemporaryDirectory() as tmp:
+        for dash in run_real(tmp)["dashboards"]:
+            assert dash["description"], f"{dash['uid']} has no description"
+
+def test_dashboard_carries_its_own_variables():
+    """A global list cannot say that `pod` belongs only to the software dashboard,
+    which is what decides whether the Pod control renders on a tab."""
+    with tempfile.TemporaryDirectory() as tmp:
+        out = run_real(tmp)
+        by_uid = {d["uid"]: {v["name"] for v in d["variables"]} for d in out["dashboards"]}
+        assert by_uid["gpu-software"] == {"pod", "gpu"}
+        assert by_uid["gpu-hardware-device"] == {"gpu"}
+        assert by_uid["gpu-hardware-mig"] == {"gpu", "migid"}
+
+def test_variable_query_is_preserved_verbatim():
+    """`pod` is metric-scoped: label_values(<metric>, k8s_pod_name). Dropping the metric
+    offers pods that can never appear in an eBPF panel."""
+    with tempfile.TemporaryDirectory() as tmp:
+        out = run_real(tmp)
+        soft = next(d for d in out["dashboards"] if d["uid"] == "gpu-software")
+        pod = next(v for v in soft["variables"] if v["name"] == "pod")
+        assert pod["query"] == "label_values(ebpf_cuda_kernel_launch_calls_total, k8s_pod_name)"

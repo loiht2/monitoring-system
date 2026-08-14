@@ -1,55 +1,84 @@
 'use client';
-import { useEffect, useState } from 'react';
-import { api, ApiError, PanelSpec } from '@/lib/api';
-import { substituteVars } from '@/lib/promql';
+import { useEffect, useRef, useState } from 'react';
+import { api, PanelSpec } from '@/lib/api';
+import { substituteVars, deriveStep, SCRAPE_INTERVAL_SECONDS } from '@/lib/promql';
+import { extractMetricNames } from '@/lib/support';
+import { emptyState } from '@/lib/panelSupport';
+import { stateForError } from '@/lib/panelState';
+import { assignColors, seriesKey, seriesLabel } from '@/lib/series';
 import { formatValue } from '@/lib/format';
+import { INK, SURFACE } from '@/lib/theme';
 import { PanelFrame, PanelState } from '../PanelFrame';
 
-export function BarGaugePanel({ spec, vars, tick }: {
-  spec: PanelSpec; vars: Record<string, string[]>; tick: number;
+export function BarGaugePanel({ spec, vars, start, end, tick, supported,
+  partitioned, deviceScope }: {
+  spec: PanelSpec; vars: Record<string, string[]>; start: number; end: number; tick: number;
+  supported: Record<string, boolean>; partitioned: Set<string>; deviceScope: boolean;
 }) {
+  // Carried across refreshes: a bar keeps its colour when another bar comes or goes.
+  const colorMap = useRef<Record<string, string>>({});
   const [state, setState] = useState<PanelState>('loading');
-  const [bars, setBars] = useState<{ label: string; value: number }[]>([]);
+  const [bars, setBars] = useState<{ label: string; value: number; color: string }[]>([]);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      const rangeSeconds = end - start;
       try {
-        const r = await api.query(substituteVars(spec.targets[0].expr, vars));
+        const r = await api.query(substituteVars(spec.targets[0].expr, vars, { rangeSeconds, step: deriveStep(rangeSeconds), scrapeInterval: SCRAPE_INTERVAL_SECONDS }));
         if (cancelled) return;
-        if (!r.result.length) { setState('nodata'); return; }
+        if (!r.result.length) {
+          const metrics = spec.targets.flatMap((t) => extractMetricNames(t.expr));
+          const allUnsupported = metrics.length > 0 && metrics.every((m) => supported[m] === false);
+          setState(emptyState({ deviceScope, selected: vars.gpu, partitioned, allUnsupported }));
+          return;
+        }
+        // Colour by entity key over the whole set, never by the position a bar landed at.
+        colorMap.current = assignColors(r.result.map((s: any) => s.metric), colorMap.current);
         setBars(r.result.map((s: any) => ({
-          label: (spec.targets[0].legendFormat || '').replace(
-            /\{\{(\w+)\}\}/g, (_m, k) => s.metric[k] ?? '') || Object.values(s.metric).join(' '),
+          label: seriesLabel(spec.targets[0].legendFormat, s.metric),
           value: Number(s.value[1]),
+          color: colorMap.current[seriesKey(s.metric)],
         })));
         setState('ok');
       } catch (e) {
-        if (!cancelled) setState(e instanceof ApiError && e.status >= 500 ? 'down' : 'nodata');
+        if (!cancelled) setState(stateForError(e));
       }
     })();
     return () => { cancelled = true; };
-  }, [spec, vars, tick]);
+  }, [spec, vars, start, end, tick, supported, partitioned, deviceScope]);
 
   const min = spec.min ?? 0, max = spec.max ?? 1;
   return (
     <PanelFrame title={spec.title} description={spec.description} state={state}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem',
+      {/* 2px of panel surface between adjacent bars — enough to separate them, not
+          enough to read as a list of unrelated rows. */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2,
                     justifyContent: 'center', height: '100%' }}>
-        {bars.map((b) => (
-          <div key={b.label}>
-            <div style={{ display: 'flex', justifyContent: 'space-between',
-                          fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              <span>{b.label}</span><span>{formatValue(b.value, spec.unit)}</span>
+        {bars.map((b) => {
+          const pct = Math.min(100, Math.max(0, ((b.value - min) / (max - min)) * 100));
+          const inside = pct >= 55;   // keep the direct label from overflowing the track
+          return (
+            <div key={b.label} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <div style={{ width: '38%', flexShrink: 0, fontSize: '0.75rem',
+                            color: INK.secondary, overflow: 'hidden',
+                            textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.label}</div>
+              <div style={{ flex: 1, minWidth: 0, position: 'relative', height: 18,
+                            background: SURFACE.border, borderRadius: 4 }}>
+                {/* Anchored to the baseline; only the data end is rounded. */}
+                <div style={{ width: `${pct}%`, height: '100%', background: b.color,
+                              borderRadius: '0 4px 4px 0' }} />
+                <span className="tabular" style={{
+                  position: 'absolute', top: 0, lineHeight: '18px', fontSize: '0.72rem',
+                  color: INK.primary, whiteSpace: 'nowrap',
+                  ...(inside ? { left: `${pct}%`, transform: 'translateX(-100%)',
+                                 paddingRight: '0.4rem' }
+                             : { left: `${pct}%`, paddingLeft: '0.4rem' }),
+                }}>{formatValue(b.value, spec.unit)}</span>
+              </div>
             </div>
-            <div style={{ height: 8, background: 'var(--border-color,#30363d)', borderRadius: 4 }}>
-              <div style={{
-                width: `${Math.min(100, Math.max(0, ((b.value - min) / (max - min)) * 100))}%`,
-                height: '100%', background: '#2a78d6', borderRadius: 4,
-              }} />
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </PanelFrame>
   );

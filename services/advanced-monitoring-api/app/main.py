@@ -17,11 +17,10 @@ PROMETHEUS_URL = os.environ.get(
 
 app = FastAPI(title="advanced-monitoring-api")
 
-# The UI runs on a different origin to this API, so every browser call is cross-origin.
-# The allowlist is configurable because the right value depends on how the UI is reached:
-# loopback under port-forward, the node address under NodePort. A browser treats
-# localhost, 127.0.0.1 and the node IP as three different origins, so an origin missing
-# here leaves the page stuck on "Loading…" with the reason only in the browser console.
+# The deployed UI no longer relies on this: it proxies /api/* to this API server-side, so
+# the browser calls only the UI's own origin and makes no cross-origin request. The
+# allowlist still matters for a browser hitting this API directly during development,
+# where localhost and 127.0.0.1 are two different origins.
 CORS_ORIGINS = [o.strip() for o in os.environ.get(
     "CORS_ORIGINS", "http://localhost:3002,http://127.0.0.1:3002").split(",") if o.strip()]
 
@@ -71,11 +70,13 @@ async def get_query_range(q: str = Query(...), start: float = Query(...),
 
 
 @app.get("/label/{name}/values")
-async def get_label_values(name: str, start: float | None = None, end: float | None = None):
+async def get_label_values(name: str, start: float | None = None, end: float | None = None,
+                           match: str | None = Query(default=None)):
     # start/end are optional but the UI always sends them: unscoped, this lists every
-    # value in the retention window, including devices that no longer exist.
+    # value in the retention window, including devices that no longer exist. match scopes
+    # the lookup to one metric, for variables whose Grafana query names one.
     try:
         return {"values": await prometheus.label_values(
-            _client, PROMETHEUS_URL, name, start=start, end=end)}
+            _client, PROMETHEUS_URL, name, start=start, end=end, match=match)}
     except prometheus.UpstreamError as exc:
         return {"values": [], "error": str(exc)}

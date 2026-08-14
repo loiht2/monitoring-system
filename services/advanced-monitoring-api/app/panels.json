@@ -3,6 +3,15 @@
     {
       "uid": "gpu-hardware-device",
       "title": "GPU Hardware — Device",
+      "description": "What a whole physical card is doing, who holds it, and whether it is healthy. DCGM is the source for device readings; NVML is retained for exactly three panels DCGM cannot supply (GPU Utilization per Pod, Memory Held by Each Pod, Clocks Throttle Reasons). Every DCGM panel filters to the whole-device entity (GPU_I_ID=\"\") and every retained nvml_* panel filters to the whole-device reading (mig_uuid=\"\"), so a MIG-partitioned card's instance-scoped reading is never double-counted into a device total; see GPU Hardware — MIG for the per-instance view.",
+      "variables": [
+        {
+          "name": "gpu",
+          "query": "label_values(gpu_uuid)",
+          "includeAll": true,
+          "multi": true
+        }
+      ],
       "rows": [
         {
           "title": "Performance",
@@ -571,6 +580,21 @@
     {
       "uid": "gpu-hardware-mig",
       "title": "GPU Hardware — MIG",
+      "description": "Per-instance view of a MIG-partitioned card: every panel here reports one GPU instance, not the whole physical device. Field definitions are shared with GPU Hardware — Device (the scope is the only difference between them). Utilization here is normalized to the instance, not the card, so a saturated instance can read close to 1.0 while the rest of the physical card sits idle — instance values must never be summed into a device-level figure. A MIG series carries gpu_uuid for the parent card, mig_uuid for the instance, and GPU_I_ID, which is the only identifier DCGM publishes for an instance.",
+      "variables": [
+        {
+          "name": "gpu",
+          "query": "label_values(gpu_uuid)",
+          "includeAll": true,
+          "multi": true
+        },
+        {
+          "name": "migid",
+          "query": "label_values(DCGM_FI_DEV_FB_USED{GPU_I_ID!=\"\"}, GPU_I_ID)",
+          "includeAll": true,
+          "multi": true
+        }
+      ],
       "rows": [
         {
           "title": "Performance",
@@ -589,7 +613,7 @@
               },
               "targets": [
                 {
-                  "expr": "DCGM_FI_PROF_GR_ENGINE_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"}",
+                  "expr": "DCGM_FI_PROF_GR_ENGINE_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID=~\"$migid\", GPU_I_ID!=\"\"}",
                   "legendFormat": "{{node}} gpu{{gpu}} · {{GPU_I_PROFILE}}"
                 }
               ],
@@ -610,7 +634,7 @@
               },
               "targets": [
                 {
-                  "expr": "DCGM_FI_PROF_SM_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"}",
+                  "expr": "DCGM_FI_PROF_SM_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID=~\"$migid\", GPU_I_ID!=\"\"}",
                   "legendFormat": "{{node}} gpu{{gpu}} · {{GPU_I_PROFILE}}"
                 }
               ],
@@ -629,7 +653,7 @@
               },
               "targets": [
                 {
-                  "expr": "DCGM_FI_PROF_SM_OCCUPANCY{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"}",
+                  "expr": "DCGM_FI_PROF_SM_OCCUPANCY{gpu_uuid=~\"$gpu\", GPU_I_ID=~\"$migid\", GPU_I_ID!=\"\"}",
                   "legendFormat": "{{node}} gpu{{gpu}} · {{GPU_I_PROFILE}}"
                 }
               ],
@@ -648,19 +672,19 @@
               },
               "targets": [
                 {
-                  "expr": "DCGM_FI_PROF_PIPE_TENSOR_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"}",
+                  "expr": "DCGM_FI_PROF_PIPE_TENSOR_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID=~\"$migid\", GPU_I_ID!=\"\"}",
                   "legendFormat": "{{node}} gpu{{gpu}} · {{GPU_I_PROFILE}} · tensor (all)"
                 },
                 {
-                  "expr": "DCGM_FI_PROF_PIPE_TENSOR_HMMA_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"}",
+                  "expr": "DCGM_FI_PROF_PIPE_TENSOR_HMMA_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID=~\"$migid\", GPU_I_ID!=\"\"}",
                   "legendFormat": "{{node}} gpu{{gpu}} · {{GPU_I_PROFILE}} · HMMA"
                 },
                 {
-                  "expr": "DCGM_FI_PROF_PIPE_TENSOR_IMMA_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"}",
+                  "expr": "DCGM_FI_PROF_PIPE_TENSOR_IMMA_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID=~\"$migid\", GPU_I_ID!=\"\"}",
                   "legendFormat": "{{node}} gpu{{gpu}} · {{GPU_I_PROFILE}} · IMMA"
                 },
                 {
-                  "expr": "DCGM_FI_PROF_PIPE_TENSOR_DFMA_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"}",
+                  "expr": "DCGM_FI_PROF_PIPE_TENSOR_DFMA_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID=~\"$migid\", GPU_I_ID!=\"\"}",
                   "legendFormat": "{{node}} gpu{{gpu}} · {{GPU_I_PROFILE}} · DFMA"
                 }
               ],
@@ -679,19 +703,19 @@
               },
               "targets": [
                 {
-                  "expr": "DCGM_FI_PROF_PIPE_FP64_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"}",
+                  "expr": "DCGM_FI_PROF_PIPE_FP64_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID=~\"$migid\", GPU_I_ID!=\"\"}",
                   "legendFormat": "{{node}} gpu{{gpu}} · {{GPU_I_PROFILE}} · FP64"
                 },
                 {
-                  "expr": "DCGM_FI_PROF_PIPE_FP32_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"}",
+                  "expr": "DCGM_FI_PROF_PIPE_FP32_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID=~\"$migid\", GPU_I_ID!=\"\"}",
                   "legendFormat": "{{node}} gpu{{gpu}} · {{GPU_I_PROFILE}} · FP32"
                 },
                 {
-                  "expr": "DCGM_FI_PROF_PIPE_FP16_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"}",
+                  "expr": "DCGM_FI_PROF_PIPE_FP16_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID=~\"$migid\", GPU_I_ID!=\"\"}",
                   "legendFormat": "{{node}} gpu{{gpu}} · {{GPU_I_PROFILE}} · FP16"
                 },
                 {
-                  "expr": "DCGM_FI_PROF_PIPE_INT_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"}",
+                  "expr": "DCGM_FI_PROF_PIPE_INT_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID=~\"$migid\", GPU_I_ID!=\"\"}",
                   "legendFormat": "{{node}} gpu{{gpu}} · {{GPU_I_PROFILE}} · integer"
                 }
               ],
@@ -716,7 +740,7 @@
               },
               "targets": [
                 {
-                  "expr": "DCGM_FI_DEV_FB_USED{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"} / (DCGM_FI_DEV_FB_USED{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"} + DCGM_FI_DEV_FB_FREE{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"})",
+                  "expr": "DCGM_FI_DEV_FB_USED{gpu_uuid=~\"$gpu\", GPU_I_ID=~\"$migid\", GPU_I_ID!=\"\"} / (DCGM_FI_DEV_FB_USED{gpu_uuid=~\"$gpu\", GPU_I_ID=~\"$migid\", GPU_I_ID!=\"\"} + DCGM_FI_DEV_FB_FREE{gpu_uuid=~\"$gpu\", GPU_I_ID=~\"$migid\", GPU_I_ID!=\"\"})",
                   "legendFormat": "{{node}} gpu{{gpu}} · {{GPU_I_PROFILE}}"
                 }
               ],
@@ -737,7 +761,7 @@
               },
               "targets": [
                 {
-                  "expr": "DCGM_FI_DEV_FB_USED{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"} * 1048576",
+                  "expr": "DCGM_FI_DEV_FB_USED{gpu_uuid=~\"$gpu\", GPU_I_ID=~\"$migid\", GPU_I_ID!=\"\"} * 1048576",
                   "legendFormat": "{{node}} gpu{{gpu}} · {{GPU_I_PROFILE}} · used"
                 }
               ],
@@ -775,7 +799,7 @@
               },
               "targets": [
                 {
-                  "expr": "DCGM_FI_PROF_DRAM_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"}",
+                  "expr": "DCGM_FI_PROF_DRAM_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID=~\"$migid\", GPU_I_ID!=\"\"}",
                   "legendFormat": "{{node}} gpu{{gpu}} · {{GPU_I_PROFILE}}"
                 }
               ],
@@ -800,7 +824,7 @@
               },
               "targets": [
                 {
-                  "expr": "gpu_metric_supported{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"}",
+                  "expr": "gpu_metric_supported{gpu_uuid=~\"$gpu\", GPU_I_ID=~\"$migid\", GPU_I_ID!=\"\"}",
                   "legendFormat": ""
                 }
               ],
@@ -849,6 +873,21 @@
     {
       "uid": "gpu-software",
       "title": "GPU Software — eBPF",
+      "description": "What each pod asks CUDA to do, and where it waits — entirely eBPF-sourced (kernel launches, memory operations, synchronization, HAMi interception). Complements GPU Hardware: this dashboard never says what the silicon did, only what the workload asked it to do. Follows the eBPF-Lens upstream layout (Overview → Compute Activity → Memory Activity → Errors → Synchronization Latency → Kernel Launch Dimensions). Only 8 of the 20 eBPF metric families have ever produced data on this cluster (gpu-burn plus a resnet50/shufflenet_v2 training run); panels for the other 12 are still built — each says explicitly that it is unobserved here and why, most commonly PyTorch's caching allocator or a workload shape that never exercises that code path.",
+      "variables": [
+        {
+          "name": "pod",
+          "query": "label_values(ebpf_cuda_kernel_launch_calls_total, k8s_pod_name)",
+          "includeAll": true,
+          "multi": true
+        },
+        {
+          "name": "gpu",
+          "query": "label_values(gpu_uuid)",
+          "includeAll": true,
+          "multi": true
+        }
+      ],
       "rows": [
         {
           "title": "Overview",
@@ -1494,6 +1533,12 @@
     {
       "name": "gpu",
       "query": "label_values(gpu_uuid)",
+      "includeAll": true,
+      "multi": true
+    },
+    {
+      "name": "migid",
+      "query": "label_values(DCGM_FI_DEV_FB_USED{GPU_I_ID!=\"\"}, GPU_I_ID)",
       "includeAll": true,
       "multi": true
     },

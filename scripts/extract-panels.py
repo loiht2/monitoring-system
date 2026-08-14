@@ -49,6 +49,14 @@ def rows_of(dash):
     return rows
 
 
+def variables_of(dash):
+    """A dashboard's own template variables, in declaration order. The global list is
+    deduped across dashboards and so cannot say which dashboard owns which variable."""
+    return [{"name": v.get("name"), "query": v.get("query", ""),
+             "includeAll": bool(v.get("includeAll")), "multi": bool(v.get("multi"))}
+            for v in dash.get("templating", {}).get("list", [])]
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("sources", nargs="+")
@@ -59,6 +67,8 @@ def main():
     for src in args.sources:
         dash = json.loads(pathlib.Path(src).read_text())
         dashboards.append({"uid": dash.get("uid", ""), "title": dash.get("title", ""),
+                           "description": dash.get("description", ""),
+                           "variables": variables_of(dash),
                            "rows": rows_of(dash)})
         for v in dash.get("templating", {}).get("list", []):
             if not any(x["name"] == v.get("name") for x in variables):

@@ -1,7 +1,12 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { api, ApiError, PanelSpec } from '@/lib/api';
-import { substituteVars } from '@/lib/promql';
+import { api, PanelSpec } from '@/lib/api';
+import { substituteVars, deriveStep, SCRAPE_INTERVAL_SECONDS } from '@/lib/promql';
+import { extractMetricNames } from '@/lib/support';
+import { emptyState } from '@/lib/panelSupport';
+import { stateForError } from '@/lib/panelState';
+import { formatValue } from '@/lib/format';
+import { INK, SURFACE } from '@/lib/theme';
 import { PanelFrame, PanelState } from '../PanelFrame';
 
 // Labels that identify the scrape target rather than the measured entity. Grafana hides
@@ -10,8 +15,10 @@ const HIDE = new Set(['__name__', 'job', 'instance', 'namespace', 'pod', 'servic
                       'container', 'endpoint', 'node', 'Hostname', 'UUID', 'device',
                       'modelName', 'pci_bus_id', 'DCGM_FI_DRIVER_VERSION']);
 
-export function TablePanel({ spec, vars, tick }: {
-  spec: PanelSpec; vars: Record<string, string[]>; tick: number;
+export function TablePanel({ spec, vars, start, end, tick, supported,
+  partitioned, deviceScope }: {
+  spec: PanelSpec; vars: Record<string, string[]>; start: number; end: number; tick: number;
+  supported: Record<string, boolean>; partitioned: Set<string>; deviceScope: boolean;
 }) {
   const [state, setState] = useState<PanelState>('loading');
   const [cols, setCols] = useState<string[]>([]);
@@ -20,21 +27,30 @@ export function TablePanel({ spec, vars, tick }: {
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      const rangeSeconds = end - start;
       try {
-        const r = await api.query(substituteVars(spec.targets[0].expr, vars));
+        const r = await api.query(substituteVars(spec.targets[0].expr, vars, { rangeSeconds, step: deriveStep(rangeSeconds), scrapeInterval: SCRAPE_INTERVAL_SECONDS }));
         if (cancelled) return;
-        if (!r.result.length) { setState('nodata'); return; }
+        if (!r.result.length) {
+          const metrics = spec.targets.flatMap((t) => extractMetricNames(t.expr));
+          const allUnsupported = metrics.length > 0 && metrics.every((m) => supported[m] === false);
+          setState(emptyState({ deviceScope, selected: vars.gpu, partitioned, allUnsupported }));
+          return;
+        }
         const keys = [...new Set(r.result.flatMap((s: any) => Object.keys(s.metric)))]
           .filter((k) => !HIDE.has(k)).sort();
         setCols([...keys, 'Value']);
-        setRows(r.result.map((s: any) => [...keys.map((k) => s.metric[k] ?? ''), s.value[1]]));
+        setRows(r.result.map((s: any) => [
+          ...keys.map((k) => s.metric[k] ?? ''),
+          formatValue(Number(s.value[1]), spec.unit),
+        ]));
         setState('ok');
       } catch (e) {
-        if (!cancelled) setState(e instanceof ApiError && e.status >= 500 ? 'down' : 'nodata');
+        if (!cancelled) setState(stateForError(e));
       }
     })();
     return () => { cancelled = true; };
-  }, [spec, vars, tick]);
+  }, [spec, vars, start, end, tick, supported, partitioned, deviceScope]);
 
   return (
     <PanelFrame title={spec.title} description={spec.description} state={state}>
@@ -43,14 +59,19 @@ export function TablePanel({ spec, vars, tick }: {
           <thead><tr>{cols.map((c) => (
             <th key={c} style={{
               textAlign: 'left', padding: '0.35rem 0.5rem', position: 'sticky', top: 0,
-              background: 'var(--bg-panel,#161b22)', color: 'var(--text-muted)',
+              background: SURFACE.panel, color: INK.muted, fontWeight: 600,
               textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.04em',
-              borderBottom: '1px solid var(--border-color,#30363d)',
+              borderBottom: `1px solid ${SURFACE.border}`,
             }}>{c}</th>))}</tr></thead>
+          {/* A hairline rule per row and no zebra striping: the stripe is a second, louder
+              cue for something one rule already does. */}
           <tbody>{rows.map((r, i) => (
             <tr key={i}>{r.map((c, j) => (
-              <td key={j} style={{ padding: '0.35rem 0.5rem',
-                                   borderBottom: '1px solid var(--border-color,#30363d)' }}>{c}</td>
+              // The value column is formatted text ("1.2K") and no longer parses as a
+              // number, so it is aligned by position to keep its tabular figures.
+              <td key={j} className={j === r.length - 1 || (Number.isFinite(Number(c)) && c !== '') ? 'tabular' : undefined}
+                  style={{ padding: '0.35rem 0.5rem', color: INK.primary,
+                           borderBottom: `1px solid ${SURFACE.border}` }}>{c}</td>
             ))}</tr>))}</tbody>
         </table>
       </div>

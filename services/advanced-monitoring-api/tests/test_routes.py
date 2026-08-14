@@ -46,3 +46,33 @@ def test_query_passes_through_result(client, monkeypatch):
         return {"resultType": "vector", "result": [{"metric": {}, "value": [1, "2"]}]}
     monkeypatch.setattr(prometheus, "query", ok)
     assert client.get("/query", params={"q": "up"}).json()["result"][0]["value"][1] == "2"
+
+
+def test_label_values_forwards_match_selector(client, monkeypatch):
+    """Prometheus scopes a label lookup with match[]; without it the picker offers
+    values that no panel on that dashboard can ever produce."""
+    seen = {}
+
+    async def fake_get(_client, url, params):
+        seen["url"], seen["params"] = url, params
+        return ["pod-a"]
+
+    monkeypatch.setattr(prometheus, "_get", fake_get)
+    r = client.get("/label/k8s_pod_name/values",
+                   params={"match": "ebpf_cuda_kernel_launch_calls_total",
+                           "start": 1, "end": 2})
+    assert r.status_code == 200
+    assert r.json()["values"] == ["pod-a"]
+    assert seen["params"]["match[]"] == "ebpf_cuda_kernel_launch_calls_total"
+
+
+def test_label_values_omits_match_when_absent(client, monkeypatch):
+    seen = {}
+
+    async def fake_get(_client, url, params):
+        seen["params"] = params
+        return []
+
+    monkeypatch.setattr(prometheus, "_get", fake_get)
+    client.get("/label/gpu_uuid/values", params={"start": 1, "end": 2})
+    assert "match[]" not in seen["params"]
