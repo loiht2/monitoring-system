@@ -52,12 +52,23 @@ def check(paths):
                     re.findall(r"\bDCGM_FI_[A-Z0-9_]+\b|\bnvml_[a-z0-9_]+\b|\bgpu_[a-z0-9_]+\b",
                                t.get("expr", "")) for t in p.get("targets", []))))
             shared.setdefault(key, {})[path] = p["description"]
-        # (e) MIG panels must filter to instances
+        # (e) MIG panels must filter to instances. `GPU_I_ID=~"$migid"` narrows to one
+        # instance but is not sufficient on its own: "All" expands $migid to `.*`, which
+        # also matches the empty string, leaking a device-scope row onto this dashboard.
+        # So GPU_I_ID!="" must accompany it, and a target carrying neither is rejected.
         if "mig" in path:
             for p in ls:
-                exprs = " ".join(t.get("expr", "") for t in p.get("targets", []))
-                if exprs and 'GPU_I_ID!=""' not in exprs and 'mig_uuid!=""' not in exprs:
-                    fail.append(f"{path}: '{p['title']}' is not filtered to MIG instances")
+                for t in p.get("targets", []):
+                    expr = t.get("expr", "")
+                    if not expr:
+                        continue
+                    if 'mig_uuid!=""' in expr:
+                        continue
+                    if 'GPU_I_ID=~"$migid"' in expr and 'GPU_I_ID!=""' not in expr:
+                        fail.append(f"{path}: '{p['title']}' filters GPU_I_ID=~\"$migid\" "
+                                    f"without GPU_I_ID!=\"\" — \"All\" would match device rows")
+                    elif 'GPU_I_ID!=""' not in expr:
+                        fail.append(f"{path}: '{p['title']}' is not filtered to MIG instances")
         # (g) NVML is retired from the hardware dashboards except for the three
         # panels the catalog keeps on it, because DCGM has no equivalent field.
         NVML_OK = {"GPU Utilization per Pod", "Memory Held by Each Pod", "Clocks Throttle Reasons"}

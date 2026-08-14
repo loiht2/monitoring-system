@@ -39,6 +39,30 @@
           ]
         },
         "hide": 0
+      },
+      {
+        "name": "migid",
+        "label": "MIG instance",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "gpu-prometheus"
+        },
+        "query": "label_values(DCGM_FI_DEV_FB_USED{GPU_I_ID!=\"\"}, GPU_I_ID)",
+        "refresh": 2,
+        "sort": 1,
+        "includeAll": true,
+        "multi": true,
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "hide": 0
       }
     ]
   },
@@ -110,7 +134,7 @@
       },
       "targets": [
         {
-          "expr": "DCGM_FI_PROF_GR_ENGINE_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"}",
+          "expr": "DCGM_FI_PROF_GR_ENGINE_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID=~\"$migid\", GPU_I_ID!=\"\"}",
           "legendFormat": "{{node}} gpu{{gpu}} · {{GPU_I_PROFILE}}",
           "instant": true
         }
@@ -142,7 +166,7 @@
       },
       "targets": [
         {
-          "expr": "DCGM_FI_PROF_SM_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"}",
+          "expr": "DCGM_FI_PROF_SM_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID=~\"$migid\", GPU_I_ID!=\"\"}",
           "legendFormat": "{{node}} gpu{{gpu}} · {{GPU_I_PROFILE}}"
         }
       ]
@@ -173,7 +197,7 @@
       },
       "targets": [
         {
-          "expr": "DCGM_FI_PROF_SM_OCCUPANCY{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"}",
+          "expr": "DCGM_FI_PROF_SM_OCCUPANCY{gpu_uuid=~\"$gpu\", GPU_I_ID=~\"$migid\", GPU_I_ID!=\"\"}",
           "legendFormat": "{{node}} gpu{{gpu}} · {{GPU_I_PROFILE}}"
         }
       ]
@@ -204,19 +228,19 @@
       },
       "targets": [
         {
-          "expr": "DCGM_FI_PROF_PIPE_TENSOR_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"}",
+          "expr": "DCGM_FI_PROF_PIPE_TENSOR_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID=~\"$migid\", GPU_I_ID!=\"\"}",
           "legendFormat": "{{node}} gpu{{gpu}} · {{GPU_I_PROFILE}} · tensor (all)"
         },
         {
-          "expr": "DCGM_FI_PROF_PIPE_TENSOR_HMMA_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"}",
+          "expr": "DCGM_FI_PROF_PIPE_TENSOR_HMMA_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID=~\"$migid\", GPU_I_ID!=\"\"}",
           "legendFormat": "{{node}} gpu{{gpu}} · {{GPU_I_PROFILE}} · HMMA"
         },
         {
-          "expr": "DCGM_FI_PROF_PIPE_TENSOR_IMMA_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"}",
+          "expr": "DCGM_FI_PROF_PIPE_TENSOR_IMMA_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID=~\"$migid\", GPU_I_ID!=\"\"}",
           "legendFormat": "{{node}} gpu{{gpu}} · {{GPU_I_PROFILE}} · IMMA"
         },
         {
-          "expr": "DCGM_FI_PROF_PIPE_TENSOR_DFMA_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"}",
+          "expr": "DCGM_FI_PROF_PIPE_TENSOR_DFMA_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID=~\"$migid\", GPU_I_ID!=\"\"}",
           "legendFormat": "{{node}} gpu{{gpu}} · {{GPU_I_PROFILE}} · DFMA"
         }
       ]
@@ -247,19 +271,19 @@
       },
       "targets": [
         {
-          "expr": "DCGM_FI_PROF_PIPE_FP64_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"}",
+          "expr": "DCGM_FI_PROF_PIPE_FP64_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID=~\"$migid\", GPU_I_ID!=\"\"}",
           "legendFormat": "{{node}} gpu{{gpu}} · {{GPU_I_PROFILE}} · FP64"
         },
         {
-          "expr": "DCGM_FI_PROF_PIPE_FP32_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"}",
+          "expr": "DCGM_FI_PROF_PIPE_FP32_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID=~\"$migid\", GPU_I_ID!=\"\"}",
           "legendFormat": "{{node}} gpu{{gpu}} · {{GPU_I_PROFILE}} · FP32"
         },
         {
-          "expr": "DCGM_FI_PROF_PIPE_FP16_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"}",
+          "expr": "DCGM_FI_PROF_PIPE_FP16_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID=~\"$migid\", GPU_I_ID!=\"\"}",
           "legendFormat": "{{node}} gpu{{gpu}} · {{GPU_I_PROFILE}} · FP16"
         },
         {
-          "expr": "DCGM_FI_PROF_PIPE_INT_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"}",
+          "expr": "DCGM_FI_PROF_PIPE_INT_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID=~\"$migid\", GPU_I_ID!=\"\"}",
           "legendFormat": "{{node}} gpu{{gpu}} · {{GPU_I_PROFILE}} · integer"
         }
       ]
@@ -330,7 +354,7 @@
           },
           "targets": [
             {
-              "expr": "DCGM_FI_DEV_FB_USED{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"} / (DCGM_FI_DEV_FB_USED{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"} + DCGM_FI_DEV_FB_FREE{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"})",
+              "expr": "DCGM_FI_DEV_FB_USED{gpu_uuid=~\"$gpu\", GPU_I_ID=~\"$migid\", GPU_I_ID!=\"\"} / (DCGM_FI_DEV_FB_USED{gpu_uuid=~\"$gpu\", GPU_I_ID=~\"$migid\", GPU_I_ID!=\"\"} + DCGM_FI_DEV_FB_FREE{gpu_uuid=~\"$gpu\", GPU_I_ID=~\"$migid\", GPU_I_ID!=\"\"})",
               "legendFormat": "{{node}} gpu{{gpu}} · {{GPU_I_PROFILE}}",
               "instant": true
             }
@@ -362,7 +386,7 @@
           },
           "targets": [
             {
-              "expr": "DCGM_FI_DEV_FB_USED{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"} * 1048576",
+              "expr": "DCGM_FI_DEV_FB_USED{gpu_uuid=~\"$gpu\", GPU_I_ID=~\"$migid\", GPU_I_ID!=\"\"} * 1048576",
               "legendFormat": "{{node}} gpu{{gpu}} · {{GPU_I_PROFILE}} · used"
             }
           ]
@@ -424,7 +448,7 @@
           },
           "targets": [
             {
-              "expr": "DCGM_FI_PROF_DRAM_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"}",
+              "expr": "DCGM_FI_PROF_DRAM_ACTIVE{gpu_uuid=~\"$gpu\", GPU_I_ID=~\"$migid\", GPU_I_ID!=\"\"}",
               "legendFormat": "{{node}} gpu{{gpu}} · {{GPU_I_PROFILE}}"
             }
           ]
@@ -460,7 +484,7 @@
           },
           "targets": [
             {
-              "expr": "gpu_metric_supported{gpu_uuid=~\"$gpu\", GPU_I_ID!=\"\"}",
+              "expr": "gpu_metric_supported{gpu_uuid=~\"$gpu\", GPU_I_ID=~\"$migid\", GPU_I_ID!=\"\"}",
               "instant": true,
               "format": "table"
             }
