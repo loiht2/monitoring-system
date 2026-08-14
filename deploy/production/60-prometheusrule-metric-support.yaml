@@ -98,6 +98,17 @@ spec:
         - record: gpu_metric_supported
           expr: |
             (
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_PROF_PIPE_TENSOR_DFMA_ACTIVE)
+              or
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_DEV_FB_USED) * 0
+            )
+            and on() (max(up{job="nvidia-dcgm-exporter"}) == 1)
+          labels:
+            metric: DCGM_FI_PROF_PIPE_TENSOR_DFMA_ACTIVE
+            source: dcgm
+        - record: gpu_metric_supported
+          expr: |
+            (
               group by (gpu_uuid, GPU_I_ID) (DCGM_FI_PROF_PIPE_FP64_ACTIVE)
               or
               group by (gpu_uuid, GPU_I_ID) (DCGM_FI_DEV_FB_USED) * 0
@@ -171,4 +182,92 @@ spec:
             and on() (max(up{job="nvidia-dcgm-exporter"}) == 1)
           labels:
             metric: DCGM_FI_PROF_PCIE_TX_BYTES
+            source: dcgm
+        - record: gpu_metric_supported
+          expr: |
+            (
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_PROF_NVLINK_TX_BYTES)
+              or
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_DEV_FB_USED) * 0
+            )
+            and on() (max(up{job="nvidia-dcgm-exporter"}) == 1)
+          labels:
+            metric: DCGM_FI_PROF_NVLINK_TX_BYTES
+            source: dcgm
+        - record: gpu_metric_supported
+          expr: |
+            (
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_PROF_NVLINK_RX_BYTES)
+              or
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_DEV_FB_USED) * 0
+            )
+            and on() (max(up{job="nvidia-dcgm-exporter"}) == 1)
+          labels:
+            metric: DCGM_FI_PROF_NVLINK_RX_BYTES
+            source: dcgm
+        - record: gpu_metric_supported
+          expr: |
+            (
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_PROF_C2C_TX_ALL_BYTES)
+              or
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_DEV_FB_USED) * 0
+            )
+            and on() (max(up{job="nvidia-dcgm-exporter"}) == 1)
+          labels:
+            metric: DCGM_FI_PROF_C2C_TX_ALL_BYTES
+            source: dcgm
+        - record: gpu_metric_supported
+          expr: |
+            (
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_PROF_C2C_RX_ALL_BYTES)
+              or
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_DEV_FB_USED) * 0
+            )
+            and on() (max(up{job="nvidia-dcgm-exporter"}) == 1)
+          labels:
+            metric: DCGM_FI_PROF_C2C_RX_ALL_BYTES
+            source: dcgm
+        - record: gpu_metric_supported
+          expr: |
+            (
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_PROF_HOSTMEM_CACHE_HIT)
+              or
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_DEV_FB_USED) * 0
+            )
+            and on() (max(up{job="nvidia-dcgm-exporter"}) == 1)
+          labels:
+            metric: DCGM_FI_PROF_HOSTMEM_CACHE_HIT
+            source: dcgm
+        - record: gpu_metric_supported
+          expr: |
+            (
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_PROF_HOSTMEM_CACHE_MISS)
+              or
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_DEV_FB_USED) * 0
+            )
+            and on() (max(up{job="nvidia-dcgm-exporter"}) == 1)
+          labels:
+            metric: DCGM_FI_PROF_HOSTMEM_CACHE_MISS
+            source: dcgm
+        - record: gpu_metric_supported
+          expr: |
+            (
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_PROF_PEERMEM_CACHE_HIT)
+              or
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_DEV_FB_USED) * 0
+            )
+            and on() (max(up{job="nvidia-dcgm-exporter"}) == 1)
+          labels:
+            metric: DCGM_FI_PROF_PEERMEM_CACHE_HIT
+            source: dcgm
+        - record: gpu_metric_supported
+          expr: |
+            (
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_PROF_PEERMEM_CACHE_MISS)
+              or
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_DEV_FB_USED) * 0
+            )
+            and on() (max(up{job="nvidia-dcgm-exporter"}) == 1)
+          labels:
+            metric: DCGM_FI_PROF_PEERMEM_CACHE_MISS
             source: dcgm

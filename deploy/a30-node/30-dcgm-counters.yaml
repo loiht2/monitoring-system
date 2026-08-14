@@ -38,9 +38,22 @@ data:
     DCGM_FI_PROF_SM_OCCUPANCY,               gauge, Ratio of resident warps to the theoretical maximum.
     DCGM_FI_PROF_PIPE_TENSOR_HMMA_ACTIVE,    gauge, Ratio of cycles the HMMA (FP16/BF16) tensor pipe is active.
     DCGM_FI_PROF_PIPE_TENSOR_IMMA_ACTIVE,    gauge, Ratio of cycles the IMMA (INT8) tensor pipe is active.
+    DCGM_FI_PROF_PIPE_TENSOR_DFMA_ACTIVE,    gauge, Ratio of cycles the DFMA (FP64) tensor pipe is active.
     DCGM_FI_PROF_PIPE_FP64_ACTIVE,           gauge, Ratio of cycles the non-tensor FP64 pipe is active.
     DCGM_FI_PROF_PIPE_FP32_ACTIVE,           gauge, Ratio of cycles the non-tensor FP32 pipe is active.
     DCGM_FI_PROF_PIPE_FP16_ACTIVE,           gauge, Ratio of cycles the non-tensor FP16 pipe is active.
+    # Interconnect and cache-residency fields, plotted by the dashboards. All eight are
+    # known fields in DCGM 4.5.0 (1011, 1012, 1076, 1078, 1080, 1081, 1082, 1083), so an
+    # unsupported one is skipped per line rather than emptying the registry. They are
+    # requested even where unsupported, for the same reason as PIPE_INT_ACTIVE below.
+    DCGM_FI_PROF_NVLINK_TX_BYTES,            gauge, NVLink bytes written.
+    DCGM_FI_PROF_NVLINK_RX_BYTES,            gauge, NVLink bytes read.
+    DCGM_FI_PROF_C2C_TX_ALL_BYTES,           gauge, C2C bytes written across all links.
+    DCGM_FI_PROF_C2C_RX_ALL_BYTES,           gauge, C2C bytes read across all links.
+    DCGM_FI_PROF_HOSTMEM_CACHE_HIT,          gauge, Host memory cache hits.
+    DCGM_FI_PROF_HOSTMEM_CACHE_MISS,         gauge, Host memory cache misses.
+    DCGM_FI_PROF_PEERMEM_CACHE_HIT,          gauge, Peer memory cache hits.
+    DCGM_FI_PROF_PEERMEM_CACHE_MISS,         gauge, Peer memory cache misses.
     # Requested even where unsupported. DCGM logs 'metric not enabled' and skips it,
     # which is harmless — and its absence for a GPU is the evidence the support rule
     # uses to report "not supported on this GPU" instead of a bare "No data"
