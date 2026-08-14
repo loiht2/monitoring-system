@@ -24,3 +24,10 @@ snapshots/
 .next/
 next-env.d.ts
 *.tsbuildinfo
+
+# Evaluation run artifacts. Logs are regenerated workload stdout (42 MB across 286
+# files) and report.json is a machine artifact; phases.jsonl and report.md are kept
+# because they are the evidence docs-internal/14 §7-8 cites.
+evaluation/logs/
+evaluation/__pycache__/
+evaluation/report.json
