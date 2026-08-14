@@ -48,6 +48,24 @@ Two consequences:
 - A per-pod GPU metric that is *absent* while a pod is `Running` and claims a GPU deserves an alert. It means
   either this, or the resolver is broken; both need a human.
 
+### R-DCGM-FIELDS — one unknown field silently drops every other field
+
+Observed live. `DCGM_FI_PROF_DMMA_CYCLES_ACTIVE_TOTAL` is not a known field in the DCGM build shipped by this
+GPU Operator. The exporter logs `could not find DCGM field` and then serves **nothing at all** — not the bad
+field, not the 23 fields that were working a minute earlier. `/metrics` returns an empty body, the scrape
+succeeds, and every dashboard and alert built on DCGM goes quiet without a single error surfacing in
+Prometheus.
+
+Two consequences for anyone editing the counters ConfigMap:
+
+- An unknown field is **fatal**, not skipped. An unsupported-but-known field (`DCGM_FI_PROF_PIPE_INT_ACTIVE`
+  here) only logs `metric not enabled` and is skipped, which is why the two cases must not be conflated.
+- Reconciling the new list against the old one on paper is not enough — that check passed. Only counting the
+  fields the exporter actually serves afterwards catches this.
+
+Always diff `# HELP` names before and after, and treat a drop to zero as the expected failure to look for.
+
+
 ### R-1 — Renaming a label breaks alert rules permanently
 
 Alert rules that divide one metric by another **without an explicit `on()` clause** match on the complete label

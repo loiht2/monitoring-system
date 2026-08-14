@@ -117,11 +117,18 @@ PF_PID=$!
 trap 'kill "$PF_PID" 2>/dev/null || true' EXIT
 
 for _ in $(seq 1 30); do
+  # Fail fast rather than polling a dead forward for 15s and then crashing
+  # confusingly downstream.
+  kill -0 "$PF_PID" 2>/dev/null || { echo "port-forward to svc/prometheus-operated in ns $NS failed" >&2; exit 1; }
   curl -sf "http://127.0.0.1:${PORT}/-/ready" >/dev/null 2>&1 && break
   sleep 0.5
 done
 
-curl -sfG "http://127.0.0.1:${PORT}/api/v1/query" --data-urlencode "query=${QUERY}" \
+# NOT -f on this one. curl -f suppresses the response body on any non-2xx, and
+# a bad query or an unready Prometheus returns its explanation IN the body —
+# which is exactly what _promq_fmt.py's "status != success" branch prints.
+# With -f the formatter gets zero bytes and dies with a JSONDecodeError instead.
+curl -sG "http://127.0.0.1:${PORT}/api/v1/query" --data-urlencode "query=${QUERY}" \
   | python3 "$(cd "$(dirname "$0")" && pwd)/_promq_fmt.py"
 ```
 
@@ -171,8 +178,22 @@ echo "sampling for ${WINDOW}s ..." >&2
 sleep "$WINDOW"
 
 : > "$OUT"
-for field in $("$HERE/promq.sh" 'group by (__name__) ({__name__=~"DCGM_FI_PROF_.*"})' \
-                 | sed 's/{.*//' | tr -d ' ' | grep . | sort); do
+# promq.sh prints "<value>  <name>{labels}", so the NAME is field 2. Do not
+# strip all spaces: that glues the value onto the name and every query built
+# from it becomes invalid PromQL.
+# Two steps on purpose. promq.sh failing must still abort loudly, but grep
+# matching nothing must NOT: under `set -e` with pipefail, grep's exit 1 makes
+# the whole assignment fail and the script dies BEFORE the guard below can
+# report why. `|| true` on the second assignment only is what keeps both.
+RAW=$("$HERE/promq.sh" 'group by (__name__) ({__name__=~"DCGM_FI_PROF_.*"})')
+FIELDS=$(printf '%s\n' "$RAW" \
+           | awk '{print $2}' | sed 's/{.*//' | grep -E '^DCGM_FI_PROF_' | sort || true)
+if [ -z "$FIELDS" ]; then
+  echo "no DCGM_FI_PROF_* metrics found — is the exporter scraped?" >&2
+  exit 1
+fi
+
+for field in $FIELDS; do
   "$HERE/promq.sh" "avg_over_time(${field}[${WINDOW}s])" \
     | sed "s/^/${field} /" >> "$OUT"
 done
@@ -243,16 +264,23 @@ kind: ClusterRole
 metadata:
   name: prometheus-gpu
 rules:
+  # Least privilege. Every target in this project is Service-based, so the
+  # endpoints and endpointslices discovery paths are all that is needed.
+  # Deliberately NOT granted: `nodes` / `nodes/metrics` (cluster-wide read of
+  # every kubelet's metrics) and `nonResourceURLs: /metrics` (the API server's
+  # own metrics). Those are kube-prometheus-stack boilerplate for node-role and
+  # apiserver scrape jobs, which no phase of this project defines. Add them back
+  # only when such a job is actually introduced.
   - apiGroups: [""]
-    resources: ["nodes", "nodes/metrics", "services", "endpoints", "pods"]
+    resources: ["services", "endpoints", "pods"]
     verbs: ["get", "list", "watch"]
   - apiGroups: ["discovery.k8s.io"]
     resources: ["endpointslices"]
     verbs: ["get", "list", "watch"]
+  # `get` only, and that is sufficient: any ConfigMap reference (a TLS CA
+  # bundle, say) is by exact name, never discovered by listing.
   - apiGroups: [""]
     resources: ["configmaps"]
-    verbs: ["get"]
-  - nonResourceURLs: ["/metrics"]
     verbs: ["get"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -452,8 +480,10 @@ kubectl -n "$NS" rollout status sts/prometheus-gpu --timeout=180s
 ./scripts/promq.sh 'up'
 ```
 
-Expected: PASS — at least one `up` series (Prometheus scrapes itself).
-If the StatefulSet never appears, the operator is not reconciling; re-check Task 3.
+Expected: PASS — the StatefulSet becomes ready. `up` is **empty at this point and that is correct**: an
+operator-managed Prometheus has no self-scrape ServiceMonitor, and none of ours exist yet, so it has zero
+targets. Use `./scripts/promq.sh 'vector(1)'` to prove the API is serving; the first real `up` series arrives
+in Task 6. If the StatefulSet never appears, the operator is not reconciling; re-check Task 3.
 
 - [ ] **Step 5: Stage and request commit approval**
 
@@ -711,7 +741,12 @@ spec:
 
 ```bash
 kubectl apply -f deploy/a30-node/50-servicemonitor-dcgm.yaml
-sleep 30   # allow the operator to regenerate config and Prometheus to scrape
+# The operator must regenerate the config, Prometheus must reload it, and a
+# scrape must land. 30s was not enough in practice; poll instead of sleeping.
+for _ in $(seq 1 20); do
+  ./scripts/promq.sh 'up{job="nvidia-dcgm-exporter"}' | grep -q . && break
+  sleep 5
+done
 ./scripts/promq.sh 'count(DCGM_FI_DEV_GPU_UTIL) and count(DCGM_FI_DEV_GPU_UTIL{gpu_uuid!="",UUID!=""})'
 ```
 

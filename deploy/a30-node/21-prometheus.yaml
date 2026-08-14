@@ -1,0 +1,37 @@
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
+metadata:
+  name: gpu
+  namespace: gpu-monitoring
+spec:
+  serviceAccountName: prometheus-gpu
+  replicas: 1
+  scrapeInterval: 15s
+  retention: 7d
+  retentionSize: 10GB
+  # No `storage:` block — the operator falls back to emptyDir. Metrics are
+  # stateless; only history is lost on a restart, which is acceptable during
+  # build-out. A local PersistentVolume replaces this before Phase 3, and the
+  # default network-filesystem StorageClass must never be used for a TSDB.
+  serviceMonitorSelector:
+    matchLabels:
+      app.kubernetes.io/part-of: gpu-monitoring
+  # Required for 60-prometheusrule-metric-support.yaml to be evaluated at all.
+  # A nil selector selects NOTHING, so without this the rule applies cleanly and
+  # is silently never run.
+  ruleSelector:
+    matchLabels:
+      app.kubernetes.io/part-of: gpu-monitoring
+  # podMonitorSelector, probeSelector and scrapeConfigSelector are deliberately
+  # left unset: a nil selector selects nothing, so no unrelated object can join
+  # this Prometheus's target set.
+  resources:
+    requests:
+      memory: 1Gi
+      cpu: 200m
+    limits:
+      memory: 2Gi
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+    fsGroup: 65534
