@@ -15,3 +15,54 @@ describe('formatValue', () => {
     expect(formatValue(NaN, 'watt')).toBe('—');
   });
 });
+
+describe('formatValue — seconds', () => {
+  it('renders sub-millisecond latency in µs rather than collapsing to 0.00', () => {
+    // The bug this fixes: si() rendered 0.000123 as "0.00", destroying the value.
+    // Every eBPF latency panel is a P95/P99 in seconds, so they all read as nothing.
+    expect(formatValue(0.000123, 's')).toBe('123 µs');
+  });
+
+  it('scales through ns, µs, ms and s', () => {
+    expect(formatValue(0.000000045, 's')).toBe('45 ns');
+    expect(formatValue(0.0034, 's')).toBe('3.4 ms');
+    expect(formatValue(2.5, 's')).toBe('2.5 s');
+  });
+
+  it('keeps large durations in seconds rather than inventing minutes', () => {
+    expect(formatValue(3600, 's')).toBe('3600 s');
+  });
+
+  it('renders zero without a spurious unit jump', () => {
+    expect(formatValue(0, 's')).toBe('0 s');
+  });
+});
+
+describe('formatValue — ops', () => {
+  it('keeps the rate suffix', () => {
+    expect(formatValue(1234, 'ops')).toBe('1.2K ops/s');
+    expect(formatValue(7, 'ops')).toBe('7.00 ops/s');
+  });
+});
+
+describe('formatValue — bytes stay IEC', () => {
+  it('renders MiB, not decimal MB', () => {
+    // Deliberate: DCGM reports FB_USED in MiB (02 §0.3) and Grafana's `bytes` unit is
+    // IEC. Decimal MB would put this UI 4.9% adrift of Grafana on the same metric.
+    expect(formatValue(12616466432, 'bytes')).toBe('11.8 GiB');
+    expect(formatValue(5 * 1024 * 1024, 'bytes')).toBe('5.0 MiB');
+  });
+});
+
+describe('formatValue — hertz', () => {
+  it('joins the SI prefix to the unit', () => {
+    // si() rendered this as "1.4G Hz"; the prefix belongs against the unit symbol.
+    expect(formatValue(1410000000, 'hertz')).toBe('1.4 GHz');
+    expect(formatValue(500, 'hertz')).toBe('500 Hz');
+  });
+
+  it('leaves the other SI-derived renderings alone', () => {
+    expect(formatValue(1024 * 1024, 'Bps')).toBe('1.0 MiB/s');
+    expect(formatValue(1234, undefined)).toBe('1.2K');
+  });
+});

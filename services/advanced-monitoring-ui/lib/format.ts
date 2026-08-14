@@ -9,8 +9,29 @@ export function formatValue(v: number, unit?: string): string {
     case 'hertz':       return si(v, 'Hz');
     case 'bytes':       return bytes(v);
     case 'Bps':         return `${bytes(v)}/s`;
+    case 's':           return duration(v);
+    case 'ops':         return `${si(v, '')} ops/s`;
     default:            return si(v, '');
   }
+}
+
+/** Seconds, scaled down. A GPU latency is usually microseconds, and rendering it through
+ *  the plain SI helper collapsed it to "0.00" — the panel then looked idle when it was
+ *  merely fast. Scales down only: 3600 s stays "3600 s" rather than becoming "1 h",
+ *  because these are durations of operations, not wall-clock spans. */
+function duration(v: number): string {
+  if (v === 0) return '0 s';
+  const abs = Math.abs(v);
+  if (abs < 1e-6) return `${round(v * 1e9)} ns`;
+  if (abs < 1e-3) return `${round(v * 1e6)} µs`;
+  if (abs < 1)    return `${round(v * 1e3)} ms`;
+  return `${round(v)} s`;
+}
+
+/** One decimal below 10, none above — enough to separate 3.4 ms from 3.9 ms without
+ *  implying precision the histogram bucket does not have. */
+function round(v: number): string {
+  return Math.abs(v) < 10 ? String(Number(v.toFixed(1))) : String(Math.round(v));
 }
 
 function bytes(v: number): string {
@@ -25,5 +46,6 @@ function si(v: number, suffix: string): string {
   let i = 0;
   while (Math.abs(v) >= 1000 && i < u.length - 1) { v /= 1000; i++; }
   const n = Math.abs(v) < 10 && i === 0 ? v.toFixed(2) : v.toFixed(i ? 1 : 0);
-  return `${n}${u[i]}${suffix ? ' ' + suffix : ''}`;
+  // The prefix belongs against the unit symbol: 1.4 GHz, not "1.4G Hz".
+  return suffix ? `${n} ${u[i]}${suffix}` : `${n}${u[i]}`;
 }
