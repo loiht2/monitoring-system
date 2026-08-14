@@ -1,5 +1,9 @@
 # Advanced monitoring: a native UI over this system's metrics.
 #
+# The browser only ever talks to the UI's own origin: the UI proxies /api/* to the API
+# server-side over in-cluster DNS (advanced-monitoring-ui/app/api/[...path]/route.ts).
+# No API address reaches the browser, so this manifest carries nothing cluster-specific.
+#
 # Both Services are NodePort so the UI is reachable from a workstation browser. A
 # ClusterIP plus `kubectl port-forward` binds to loopback ON THE NODE, so nothing off the
 # node can reach it, and the page renders empty.
@@ -31,10 +35,8 @@ spec:
           env:
             - name: PROMETHEUS_URL
               value: http://prometheus-operated.gpu-monitoring.svc.cluster.local:9090
-            # The UI's origin as the browser sees it. Missing here, every request is
-            # blocked by CORS and the page renders empty with no server-side error.
-            - name: CORS_ORIGINS
-              value: http://192.168.6.123:30802,http://localhost:3002,http://127.0.0.1:3002
+            # No CORS_ORIGINS: the UI proxies to this API server-side, so the browser
+            # makes no cross-origin request and there is no origin to allowlist.
           readinessProbe:
             httpGet: { path: /healthz, port: http }
           resources:
@@ -71,10 +73,10 @@ spec:
           image: REPLACE_ME_UI
           ports: [{ name: http, containerPort: 3002 }]
           env:
-            # Read by the BROWSER, not by this pod, so it must be an address the
-            # browser can route to — the node's NodePort, not in-cluster DNS.
-            - name: MONITORING_API
-              value: http://192.168.6.123:30800
+            # Read by THIS POD, not by the browser: where Next forwards /api/* to. It is
+            # in-cluster DNS precisely because the browser never sees this address.
+            - name: MONITORING_API_UPSTREAM
+              value: http://advanced-monitoring-api:8000
           readinessProbe:
             httpGet: { path: /, port: http }
           resources:

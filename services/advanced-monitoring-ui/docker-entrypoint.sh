@@ -1,7 +1,5 @@
 #!/bin/sh
-# Write window.__ENV at container start. Baking NEXT_PUBLIC_* at build time would mean
-# rebuilding the image per cluster, which is the trap the ML Platform's entrypoint avoids.
-cat > /app/public/env.js <<EOF
-window.__ENV = { MONITORING_API: "${MONITORING_API:-}" };
-EOF
+# No runtime config is injected: the UI reaches the API through a same-origin /api proxy
+# (app/api/[...path]/route.ts), read from MONITORING_API_UPSTREAM server-side, so nothing
+# cluster-specific ever reaches the browser.
 exec node server.js
