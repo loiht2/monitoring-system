@@ -83,9 +83,18 @@ DCGM rejects outright.
 | Field | In the list? | Why |
 |---|---|---|
 | `DCGM_FI_PROF_PIPE_INT_ACTIVE` | **Yes** | Logs `metric not enabled` and is skipped. Harmless, and its absence is the evidence |
+| `DCGM_FI_PROF_PIPE_TENSOR_DFMA_ACTIVE` | **Yes** | Field 1015. Measured: logs `metric not enabled`, skipped; support rule records `0` on both entities. The A30 executes FP64 tensor work (visible in the aggregate `PIPE_TENSOR_ACTIVE`) but has no per-pipe counter for it ([14 § 2.2](14-metric-evaluation.md)) |
+| `DCGM_FI_PROF_NVLINK_TX_BYTES` / `..._RX_BYTES` | **Yes** | Fields 1011/1012. Measured: **collected**, reporting `0` bytes — the links are inactive, not the counter. Support rule records `1` on the whole card, `0` on the MIG instance |
+| `DCGM_FI_PROF_C2C_TX_ALL_BYTES` / `..._RX_ALL_BYTES` | **Yes** | Fields 1076/1078. Measured: skipped as `metric not enabled`; support rule records `0`. C2C is Grace-Hopper hardware an A30 does not have |
+| `DCGM_FI_PROF_HOSTMEM_CACHE_HIT` / `..._MISS` | **Yes** | Fields 1080/1081. Measured: skipped as `metric not enabled`; support rule records `0` |
+| `DCGM_FI_PROF_PEERMEM_CACHE_HIT` / `..._MISS` | **Yes** | Fields 1082/1083. Measured: skipped as `metric not enabled`; support rule records `0` |
 | `DCGM_FI_PROF_DMMA_CYCLES_ACTIVE_TOTAL` | **No, never** | Not a known field in this DCGM build. An unknown field is **fatal**: the exporter serves nothing at all ([09 — R-DCGM-FIELDS](09-risks-and-open-questions.md)) |
 
 Confusing these two costs every DCGM metric on the node.
+
+The distinction is visible in the exporter log and was verified on rollout: every field above took the
+per-line `WARN … "metric not enabled"` path and the registry still built, with the actively-scraped DCGM
+metric-name count rising 31 → 33 (the two NVLink fields). A fatal unknown field would have taken it to 0.
 
 ### 3.3 One name from an exporter and a recording rule
 

@@ -88,13 +88,55 @@ foreground error the user asked for, a failed sidebar lookup is not.
 The Grafana dashboards carry one variable, `gpu`, over `label_values(gpu_uuid)`, multi-select with an "All"
 option. Panel expressions embed it as `gpu_uuid=~"$gpu"`.
 
-The UI reproduces this: it fetches values from `/label/gpu_uuid/values`, and substitutes the selection into
-`$gpu` as a regex alternation before sending the query.
+The UI reproduces this: it substitutes the selection into `$gpu` as a regex alternation before sending the
+query. `All` substitutes `.*`. Substitution happens **in the frontend immediately before the request**, so
+the stored spec stays identical to the Grafana source.
 
 **The lookup is scoped to the selected time range.** Unscoped, Prometheus answers from the whole retention
 window, so a device that no longer exists is still offered. Measured on the validation cluster: a deleted MIG
-instance was still listed hours later, and selecting it would have produced a panel that could never draw. `All` substitutes `.*`. Substitution happens **in the
-frontend immediately before the request**, so the stored spec stays identical to the Grafana source.
+instance was still listed hours later, and selecting it would have produced a panel that could never draw.
+
+### 2.3 A bare `label_values(gpu_uuid)` is the wrong source
+
+Time-scoping is necessary but not sufficient. Measured on the live cluster, the lookup returns **three**
+values at a 6h range and two at 1h:
+
+```
+GPU-26e02ca7-f4ba-b335-915c-2a8541deb8a4     ← DCGM, physical card 0
+GPU-a4d27439-566b-841c-428f-d87e73e4134e     ← DCGM, physical card 1
+MIG-7e63a3a6-c915-5f19-8f11-b2c525615cef     ← HAMi dra-monitor, a MIG *instance*
+```
+
+**Two exporters use the label `gpu_uuid` to mean different things.** DCGM always sets it to the *parent
+card*, identifying an instance separately with `GPU_I_ID`. HAMi's dra-monitor sets it to *whatever device it
+allocated*, which for a MIG-backed claim is the instance UUID. Both are internally consistent; the union is
+not.
+
+[01 §3.3](01-architecture.md) forbids one metric *name* from two exporters because duplicate series break
+the scrape. This is the quieter cousin: one *label key* carrying two different entity types. Nothing breaks,
+so nothing complained — a MIG instance simply appeared in a picker labelled "GPU scope", and selecting it on
+the Device tab produced panels that could never draw.
+
+**The rule: a scope picker is derived from the exporter that owns the scope, never from a bare label
+lookup.** Both pickers therefore read DCGM, which is the one source that describes both scopes coherently:
+
+| Picker | Source | Yields |
+|---|---|---|
+| Device scope | distinct `gpu_uuid` on `DCGM_FI_DEV_FB_USED` | the physical cards — 2 here |
+| MIG scope | `(gpu_uuid, GPU_I_ID, GPU_I_PROFILE)` on `DCGM_FI_DEV_FB_USED{GPU_I_ID!=""}` | the instances — 1 here |
+
+`gpu_uuid` on a DCGM series is the parent card whether or not the card is partitioned, so the device picker
+lists both cards from one query, and HAMi's `MIG-…` value cannot enter it.
+
+### 2.4 The MIG scope needs a second variable
+
+DCGM publishes **no MIG instance UUID** — an instance is `(gpu_uuid, GPU_I_ID)`. So selecting one instance
+cannot be expressed by `$gpu` alone, and the MIG dashboard's panels currently filter only `GPU_I_ID!=""`,
+which means "any instance" and cannot narrow further.
+
+The MIG dashboard gains a second template variable, `migid`, over `GPU_I_ID`, and its panels filter
+`gpu_uuid=~"$gpu", GPU_I_ID=~"$migid"`. One control in the UI presents the pair as a single choice —
+`GPU 1 · 1g.6gb · id 3` — and sets both variables, because an operator picks an instance, not a coordinate.
 
 ---
 
@@ -132,12 +174,13 @@ does: 5m, 15m, 1h, 6h, 24h, 7d, with `step` derived to keep each request near 20
 ## 4. Styling
 
 Follow the ML Platform's **admin-section** convention, since that is what its monitoring surfaces actually
-use: inline `style={{}}` with CSS custom properties — `var(--bg-panel,#161b22)`,
-`var(--border-color,#30363d)`, `var(--text-muted)`, radius 10 — and **not** Tailwind, which is installed
-there but unused in those files.
+use: CSS custom properties, radius 10, and **not** Tailwind, which is installed there but unused in those
+files. This is a deliberate choice to match the destination, not an endorsement — it is recorded here so the
+eventual merge is a file move.
 
-This is a deliberate choice to match the destination, not an endorsement. It is recorded here so the eventual
-merge is a file move.
+**The visual design is specified in [13 — UI visual design](13-ui-visual-design.md)**: tokens, the validated
+series palette, page structure, panel anatomy, and the per-renderer specs. That document supersedes this
+section on every point of appearance.
 
 ---
 
@@ -158,20 +201,22 @@ Two rules follow:
   `/monitoring/*` routes sit behind `require_auth`, which despite its name is admin-only; this API must reach
   parity before it is deployed beside them.
 
-### 5.1 Three origins, three chances to render an empty page
+### 5.1 The browser is told no address at all
 
-The UI calls the API from the browser, so every request is cross-origin, and a browser treats
-`localhost:3002`, `127.0.0.1:3002` and `192.168.6.123:30802` as three different origins. Two settings must
-agree with how the UI is actually reached:
+An earlier design handed the browser the API's address at container start (`env.js` → `MONITORING_API`) and
+listed the UI's origin in the API's `CORS_ORIGINS`. Both values are properties of *how the deployment is
+reached*, not of the code, so both were wrong on any cluster but the one they were written for — and both
+failed identically and silently: pod healthy, page loads, nothing renders, reason only in the browser
+console.
 
-| Setting | Read by | Must be |
-|---|---|---|
-| `MONITORING_API` | the **browser**, via `env.js` | An address the browser can route to — the node's NodePort, never in-cluster DNS |
-| `CORS_ORIGINS` | the API | The UI's origin exactly as the browser sees it |
+The UI now proxies `/api/*` to the API server-side (`app/api/[...path]/route.ts`, upstream from
+`MONITORING_API_UPSTREAM`, in-cluster DNS). **The browser only ever calls the UI's own origin.** No address
+reaches the page, so there is nothing cluster-specific to get wrong and no cross-origin request to
+configure.
 
-Both failures look identical from the server side — the pod is healthy, the page loads, and nothing renders.
-The reason appears only in the browser console. `CORS_ORIGINS` is an environment variable rather than a
-constant for this reason: the right value depends on the access path, not on the code.
+One trap worth recording: this must be a **route handler**, not a `next.config.js` rewrite. Next serializes
+rewrite destinations into `routes-manifest.json` at build time, so the deployment's environment variable is
+read and silently ignored — reproducing the identical failure the change set out to remove.
 
 ## 6. Grafana is not deleted
 

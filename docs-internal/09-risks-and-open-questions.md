@@ -100,6 +100,44 @@ request is admitted and then contends for memory that was never free. **Mitigati
 rather than the schedulable minimum; measure real consumption after Phase 1 and revise before the eBPF agent's
 histogram families land ([07 § 3.3](07-backend-and-deployment.md)).
 
+### R-7 — The eBPF agent's `cudaMemcpy` probe does not fire, so copy volume reads as zero
+
+**Verified** by the evaluation suite ([14 § 7](14-metric-evaluation.md)).
+`ebpf_cuda_memory_copies_bytes_total_sum` produced no sample during the `gpu0/memcpy-h2d` phase, whose
+exerciser logged `OK iterations=21142` and exited `0` — 21142 successful `cudaMemcpy` calls in a 90s window.
+
+This is an **agent gap, not a workload gap**. Other eBPF families from that same pod and window — memset,
+alloc, free, kernel launch, sync — all appeared, so the agent was attached and instrumenting the process. The
+memcpy probe specifically did not fire for this binary.
+
+Consequences: any panel or alert reading host↔device copy volume from the eBPF agent silently reports zero
+traffic for workloads that are copying. The metric stays UNVERIFIED — no sample, and no support verdict to
+explain it — which is the exact state the evaluation exists to surface.
+
+**Mitigation:** treat eBPF copy volume as unproven until the probe is fixed; use `DCGM_FI_PROF_PCIE_TX/RX_BYTES`
+(OBSERVED, device scope) for copy bandwidth in the meantime. Re-run the `memcpy-h2d` phase after any agent
+change and require the metric to move out of UNVERIFIED.
+
+### R-8 — The eBPF agent barely labels its series with a device, so the UI must join to get one
+
+**Verified** against the live cluster. Over 24h on `ebpf_cuda_kernel_launch_calls_total`, **43 pods produce
+series and the agent labels 3 of them with a `gpu_uuid`**. It emits no MIG discriminator at all — no
+`GPU_I_ID`, no `mig_uuid`. Filtering the eBPF panels on the agent's own label would therefore hide ~93% of
+the data whenever a specific GPU is selected, silently; `All` appears to work only because `.*` also matches
+an absent label.
+
+The identity exists elsewhere: the NVML exporter's `gpu_alloc_device_pod_info` maps every workload pod to the
+device it was granted and carries `mig_uuid` as well as `gpu_uuid` — 43/43 resolved, 17 on an instance. The
+UI therefore resolves a device selection to the pods that held that device and substitutes them into `$pod`
+([13 § 11.1](13-ui-visual-design.md)). The lookup is windowed (`last_over_time(...[range])`), because an
+instant query returns 0 series once the pods have finished.
+
+Same class as R-7: both are eBPF-Lens gaps found by the evaluation rather than by the agent's own reporting.
+
+**Mitigation:** the join is a workaround, not a design. If the agent starts labelling its series with
+`gpu_uuid` and a MIG identifier, **remove** the join rather than duplicate it — two sources of device
+attribution that can disagree is worse than one that is missing.
+
 ---
 
 ## 2. Assumptions to be tested, not trusted
@@ -174,3 +212,80 @@ Not risks — properties. Listed so no dashboard promises them.
   over the network — monitoring must not depend on the thing it monitors.
 - **No per-PID series.**
 - **No multi-node behaviour claims** validated on a single-node cluster.
+
+### R-9 — A MIG repartition leaves the container toolkit stale, so exporters see only some instances
+
+**Verified** on 2026-08-14, repartitioning GPU 1 from one `1g.6gb` to `2g.12gb` + 2 × `1g.6gb`.
+
+The host saw all three instances immediately — `nvidia-smi -L` listed them and DCGM reported three entities
+with the right profiles. **The NVML exporter saw two.** It logged
+
+```
+WARN nvml: skipping MIG instance handle index=1 instance=2 error="Not Found"
+```
+
+and emitted `mig_uuid` for the two `1g.6gb` instances while the `2g.12gb` was simply absent. Restarting the
+exporter did not help; it reproduced exactly.
+
+The enumeration code is not at fault — it follows the documented NVML pattern (`GetMaxMigDeviceCount`, then
+iterate and skip `NOT_FOUND`). Access to a MIG instance is gated by a `/dev/nvidia-caps/nvidia-capN` node
+per instance, and those are injected into the container by the NVIDIA container toolkit. The injected set
+was generated under the **previous** topology, so two of the three new instances happened to be reachable
+and one was not.
+
+**Restarting `ds/nvidia-container-toolkit-daemonset`, then the exporter, produced all three.**
+
+Why this matters beyond the inconvenience: the failure is **silent and partial**. Nothing errors, the
+dashboards render, and one instance is quietly missing from the MIG dashboard and from the eBPF↔device
+correlation that depends on `mig_uuid` ([13 § 11.2](13-ui-visual-design.md)). It would be easy to read the
+resulting gap as "that instance was idle".
+
+**After any MIG repartition, restart in this order and verify the count**, rather than assuming:
+
+```bash
+kubectl -n gpu-operator rollout restart ds/nvidia-container-toolkit-daemonset
+kubectl -n gpu-monitoring rollout restart ds/nvml-exporter
+kubectl -n gpu-operator  rollout restart ds/nvidia-dcgm-exporter
+# then confirm one bridge row per instance:
+curl -s -G .../api/query --data-urlencode 'q=nvml_gpu_memory_total_bytes{mig_uuid!=""}'
+```
+
+A residual `instance=3 error="Not Found"` in the log is expected and harmless: the loop runs to
+`GetMaxMigDeviceCount()` and the last slots are genuinely empty.
+
+#### R-9.1 — The DRA driver is stale in the same way, and is a separate restart
+
+The container toolkit is not the only layer that enumerates once. `nvidia-dra-driver-gpu`'s **ResourceSlice
+is written at plugin startup and never resynced.** Two hours after the repartition it still advertised the
+*destroyed* instance and nothing else:
+
+```
+gpu-1-mig-1g6gb-14-0   uuid=MIG-7e63a3a6-…   ← destroyed by the repartition
+gpu-0                  uuid=GPU-26e02ca7-…
+```
+
+A `ResourceClaim` pinned to a **new** instance therefore sat `Pending` forever with no allocation events —
+**no MIG workload could be scheduled at all**, while every dashboard looked healthy because DCGM and NVML
+were by then reporting all three instances correctly. Falling back to `NVIDIA_VISIBLE_DEVICES` failed too:
+CDI's `management.nvidia.com-gpu.yaml` contains only the device `all`, so pinning by MIG UUID gives
+`unresolvable CDI devices`.
+
+**The plugin lives in its own namespace, `nvidia-dra-driver-gpu`, not `gpu-operator`.** A restart aimed at
+`gpu-operator` matches nothing and reports nothing — it looks like it worked. Restarting it in the correct
+namespace re-advertised all four devices with the right UUIDs and profiles.
+
+So the post-repartition sequence is **three** restarts in different namespaces, and the last one is the
+easiest to miss:
+
+```bash
+kubectl -n gpu-operator          rollout restart ds/nvidia-container-toolkit-daemonset
+kubectl -n nvidia-dra-driver-gpu rollout restart ds/nvidia-dra-driver-gpu-kubelet-plugin
+kubectl -n gpu-monitoring        rollout restart ds/nvml-exporter
+kubectl -n gpu-operator          rollout restart ds/nvidia-dcgm-exporter
+# then verify, do not assume:
+kubectl get resourceslice -o json | grep -c uuid          # one entry per current device
+curl -s -G .../api/query --data-urlencode 'q=nvml_gpu_memory_total_bytes{mig_uuid!=""}'
+```
+
+**Verify the ResourceSlice explicitly.** Observability recovering is not evidence that scheduling has: the
+two failures are in different layers and one heals without the other.
