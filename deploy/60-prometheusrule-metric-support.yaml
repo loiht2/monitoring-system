@@ -1,7 +1,12 @@
-# Derives gpu_metric_supported for DCGM-owned fields. See docs-internal/10 § 2.2.
+# Derives gpu_metric_supported for DCGM-owned fields. See specs/10 § 2.2.
 #
 # DCGM is a separate exporter and cannot be asked what a GPU supports, so support is
 # inferred from evidence. A field counts as UNSUPPORTED for a GPU only when all of:
+#
+# The unit is an ENTITY, (gpu_uuid, GPU_I_ID), not a card. DCGM reports one row
+# per entity: a whole card carries no GPU_I_ID, a partitioned card reports only
+# its instances. Grouping by gpu_uuid alone collapses instances into a single
+# verdict for a scope DCGM no longer describes, and leaves instances with none.
 #
 #   1. the DCGM exporter is up          -- otherwise absence means an outage,
 #   2. that GPU reports some other DCGM field -- otherwise absence means the GPU is
