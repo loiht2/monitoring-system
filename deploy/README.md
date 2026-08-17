@@ -43,7 +43,7 @@ Numbered by dependency. Apply in order and verify each before the next.
 kubectl apply -f 00-namespace.yaml
 kubectl apply -f 10-rbac-nvml-exporter.yaml
 kubectl apply -f 30-dcgm-counters.yaml        # then patch the ClusterPolicy, see below
-kubectl apply -f 40-nvml-exporter.yaml        # after substituting the image and pull secret
+kubectl apply -f 40-nvml-exporter.yaml        # after substituting the image
 kubectl apply -f 40-ebpf-exporter.yaml
 kubectl apply -f 50-servicemonitor-*.yaml 55-servicemonitor-vgpumonitor.yaml
 kubectl apply -f 60-prometheusrule-metric-support.yaml
