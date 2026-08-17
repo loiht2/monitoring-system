@@ -19,7 +19,7 @@ type Device interface {
 	// MIGInfo reports the MIG instance's own UUID and its GPU instance ID,
 	// with ok=false for a non-MIG handle. UUID() always reports the
 	// PHYSICAL device's UUID, even for a MIG instance
-	// (docs-internal/01-architecture.md §3.1) — per-process memory is only
+	// (specs/01-architecture.md §3.1) — per-process memory is only
 	// ever read on the instance handle (see nvmldev.go Processes()), so
 	// this collector needs the same parent/instance split as the device
 	// collector.
@@ -43,7 +43,7 @@ func NewProcessCollector(devices []Device, resolve ResolvePID) *ProcessCollector
 type podKey struct{ uuid, migUUID, namespace, pod, container string }
 
 // Collect returns per-pod metrics. Values are summed per pod and the host PID is
-// discarded before exposition (docs-internal/01 § 2.1).
+// discarded before exposition (specs/01 § 2.1).
 //
 // nvml_process_sm_utilization_ratio CAN exceed 1.0 for a pod: NVML reports each
 // process's own SM-active share, and concurrent kernels from several processes

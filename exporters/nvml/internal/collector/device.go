@@ -23,7 +23,7 @@ type DeviceState struct {
 	EventReasons map[string]bool
 	// Support records, per EXPOSED METRIC NAME, whether this GPU can produce
 	// that metric — the gpu_metric_supported capability signal
-	// (docs-internal/10-metric-support-signal.md). It maps an NVML return
+	// (specs/10-metric-support-signal.md). It maps an NVML return
 	// code three ways, not two:
 	//
 	//   SUCCESS             -> true  (metric present in this DeviceState)
@@ -45,7 +45,7 @@ type StateDevice interface {
 	// MIGInfo reports the MIG instance's own UUID and its GPU instance ID
 	// (NVML GetGpuInstanceId), with ok=false for a non-MIG handle. UUID()
 	// always reports the PHYSICAL device's UUID, even for a MIG instance
-	// (docs-internal/01-architecture.md §3.1).
+	// (specs/01-architecture.md §3.1).
 	//
 	// Widened from a UUID-only method rather than adding a second accessor:
 	// both values are read from the same MIG instance handle at the same
@@ -69,7 +69,7 @@ func NewDeviceCollector(devices []StateDevice, node string) *DeviceCollector {
 // Collect returns catalog rows 1, 21, 29, 30, 31, 32 and 33.
 //
 // Deliberately emits no PCIe, NVLink, C2C or profiling-derived ratio: those
-// rows are DCGM's (docs-internal/00 § 3).
+// rows are DCGM's (specs/00 § 3).
 func (c *DeviceCollector) Collect() []Sample {
 	var out []Sample
 

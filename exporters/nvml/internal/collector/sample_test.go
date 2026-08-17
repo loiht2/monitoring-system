@@ -18,7 +18,7 @@ func TestSampleCarriesNameValueAndLabels(t *testing.T) {
 
 func TestRatioConvertsPercentAndReportsAbsence(t *testing.T) {
 	// An unsupported reading must be reported as absent, never as zero: a zero
-	// is indistinguishable from a measurement (docs-internal/02 § 5.2).
+	// is indistinguishable from a measurement (specs/02 § 5.2).
 	if got, ok := Ratio(40); !ok || got != 0.4 {
 		t.Fatalf("Ratio(40) = %v, %v; want 0.4, true", got, ok)
 	}

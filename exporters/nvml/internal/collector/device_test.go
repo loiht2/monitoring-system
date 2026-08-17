@@ -125,7 +125,7 @@ func TestOneSeriesPerSupportedEventReason(t *testing.T) {
 func TestMIGInstanceCarriesParentGPUUUID(t *testing.T) {
 	// A MIG instance's device-level series must carry gpu_uuid = the PARENT
 	// physical GPU's UUID and mig_uuid = the instance's own UUID
-	// (docs-internal/01-architecture.md §3.1). Putting the MIG UUID in
+	// (specs/01-architecture.md §3.1). Putting the MIG UUID in
 	// gpu_uuid instead (the observed defect) makes the series unjoinable to
 	// DCGM, which only ever labels gpu_uuid with a physical UUID, and it
 	// inflates GPU inventory counts computed as
@@ -272,7 +272,7 @@ func TestSupportOnMIGInstanceCarriesMIGUUID(t *testing.T) {
 
 func TestNoDCGMOwnedMetricIsEmitted(t *testing.T) {
 	// PCIe, NVLink, C2C and every profiling-derived ratio belong to DCGM
-	// (docs-internal/00 § 3). Emitting one would create a second source.
+	// (specs/00 § 3). Emitting one would create a second source.
 	for name := range namesOf(collectDevice(fullState())) {
 		for _, forbidden := range []string{"pcie", "nvlink", "c2c", "sm_active", "occupancy", "tensor", "dram"} {
 			if strings.Contains(name, forbidden) {

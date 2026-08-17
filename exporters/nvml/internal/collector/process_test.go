@@ -68,7 +68,7 @@ func TestNoSeriesCarriesAPIDLabel(t *testing.T) {
 
 func TestMIGDeviceYieldsMemoryButNoUtilization(t *testing.T) {
 	// Per-process utilization is unavailable on MIG devices; per-process
-	// memory survives (docs-internal/02 § 3.2).
+	// memory survives (specs/02 § 3.2).
 	dev := fakeProcDevice{uuid: "GPU-1", mig: true,
 		procs: []ProcSample{{PID: 101, SMUtil: 30, MemoryBytes: 1000}}}
 	for _, r := range NewProcessCollector([]Device{dev}, resolver).Collect() {
@@ -179,7 +179,7 @@ func TestMIGInstanceProcessCarriesParentGPUUUID(t *testing.T) {
 	// the exact same label-contract defect as the device collector: gpu_uuid
 	// must be the parent physical GPU's UUID, with mig_uuid identifying the
 	// instance, or the series is unjoinable to DCGM and inflates inventory
-	// counts the same way (docs-internal/01-architecture.md §3.1).
+	// counts the same way (specs/01-architecture.md §3.1).
 	dev := fakeProcDevice{uuid: "GPU-parent", mig: true, isMIG: true, migUUID: "MIG-instance",
 		procs: []ProcSample{{PID: 101, SMUtil: NotSupported, MemUtil: NotSupported, MemoryBytes: 1000}}}
 	rows := NewProcessCollector([]Device{dev}, resolver).Collect()
