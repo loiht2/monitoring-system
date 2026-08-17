@@ -1,5 +1,24 @@
 # Production rollout
 
+## Applying
+
+```bash
+kubectl apply -f deploy/
+```
+
+Lexical order is dependency order, and `kubectl apply -f <dir>` is **not** recursive, so
+`deploy/optional/` is deliberately skipped.
+
+### `optional/prometheus-storage.yaml`
+
+Applied **instead of** `21-prometheus.yaml`, never alongside it: both define `Prometheus/gpu`, and
+the operator reconciles one object of that name. Applying the directory and then this file gives
+Prometheus a persistent volume; applying this file as part of the directory would silently replace
+the working Prometheus with one bound to a local PV that may not exist.
+
+Use it where history must survive a pod restart. Without it the operator falls back to `emptyDir`,
+which is acceptable while building out and is not acceptable in production.
+
 Everything here is validated on the build cluster and parameterised for a production one. It is **not** a copy
 of `deploy/`: that directory installs a Prometheus, this one assumes production already has
 kube-prometheus-stack and Grafana and adds to them.
