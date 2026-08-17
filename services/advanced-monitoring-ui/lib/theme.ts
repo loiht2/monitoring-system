@@ -4,7 +4,7 @@
  *  with the dataviz skill's scripts/validate_palette.js — all five checks pass (lightness
  *  band, chroma floor, CVD separation, normal-vision floor, contrast). Editing any hex
  *  invalidates that; re-run the validator rather than reasoning about it.
- *  See docs-internal/13-ui-visual-design.md §1.
+ *  See specs/13-ui-visual-design.md §1.
  */
 
 export const SURFACE = {

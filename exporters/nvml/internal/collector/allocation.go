@@ -3,7 +3,7 @@ package collector
 // Entitlement is one pod's grant of one device or MIG instance.
 //
 // Entitlement is not occupancy: a pod can hold a device with no live CUDA
-// context, and that gap is the idle-GPU signal (docs-internal/01 § 2.4).
+// context, and that gap is the idle-GPU signal (specs/01 § 2.4).
 type Entitlement struct {
 	GPUUUID   string
 	MIGUUID   string

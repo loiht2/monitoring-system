@@ -5,6 +5,12 @@ on:
     paths:
       - "exporters/nvml/**"
       - ".github/workflows/build-nvml-exporter.yml"
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Immutable release tag to publish, e.g. v1.0.0. Leave empty for a plain rebuild."
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -28,9 +34,23 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/nvml-exporter
+          # Tag by commit: a manifest must never reference a mutable tag. latest
+          # is for people reading the README. release_tag is empty on a push
+          # event, which disables that line.
+          tags: |
+            type=sha,format=long,prefix=
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ inputs.release_tag }},enable=${{ inputs.release_tag != '' }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+
       - uses: docker/build-push-action@v5
         with:
           context: exporters/nvml
           push: true
-          # Tag by commit: a manifest must never reference a mutable tag.
-          tags: ghcr.io/${{ github.repository_owner }}/nvml-exporter:${{ github.sha }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}

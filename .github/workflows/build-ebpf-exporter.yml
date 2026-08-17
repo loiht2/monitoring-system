@@ -5,6 +5,12 @@ on:
     paths:
       - "exporters/ebpf/**"
       - ".github/workflows/build-ebpf-exporter.yml"
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Immutable release tag to publish, e.g. v1.0.0. Leave empty for a plain rebuild."
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -19,18 +25,40 @@ jobs:
           # The image's provenance is the submodule pointer pair; without this
           # the build would silently use whatever the default branch holds.
           submodules: recursive
+      # The submodule Makefile's image-build target is a multi-platform buildx
+      # build (linux/amd64,linux/arm64). The default docker driver cannot do
+      # that at all, so without this the build fails before anything is pushed.
+      - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/ebpf-gpu-exporter
+          tags: |
+            type=sha,format=long,prefix=
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ inputs.release_tag }},enable=${{ inputs.release_tag != '' }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+
       - name: Build and push
         env:
           IMG: ghcr.io/${{ github.repository_owner }}/ebpf-gpu-exporter:${{ github.sha }}
+          TAGS: ${{ steps.meta.outputs.tags }}
         run: |
           cd exporters/ebpf/eBPF-Lens
           # image-build, not docker-build: the upstream Makefile defines no
           # docker-build target. IMG_ORG is asserted by check_defined, so it
           # must be set even though IMG is given in full.
           make image-build IMG="$IMG" IMG_ORG=${{ github.repository_owner }}
-          docker push "$IMG"
+          # The Makefile builds exactly one tag, so the rest are aliases of it.
+          # metadata-action emits one tag per line.
+          echo "$TAGS" | while read -r tag; do
+            [ -z "$tag" ] && continue
+            docker tag "$IMG" "$tag"
+            docker push "$tag"
+          done

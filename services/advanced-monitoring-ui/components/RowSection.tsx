@@ -30,7 +30,7 @@ export function RowSection({ title, panelCount, defaultOpen, children }: {
         </svg>
         <span style={{ fontSize: '0.95rem', fontWeight: 600, color: INK.primary }}>{title}</span>
         <span style={{ fontSize: '0.8rem', color: INK.muted }}>
-          · {panelCount} panels
+          · {panelCount} {panelCount === 1 ? 'panel' : 'panels'}
         </span>
       </button>
       {open && <div style={{ padding: '0.8rem' }}>{children}</div>}

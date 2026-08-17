@@ -64,6 +64,44 @@ computed over it.
 Two metrics in the source catalog — L2 cache hit and miss rates over the chip-to-chip link — have **no
 corresponding field in DCGM on any hardware**. They are not deliverable by configuration anywhere.
 
+### How you find out, without guessing
+
+You do not have to consult the table above to know what your GPU supports. The system publishes
+`gpu_metric_supported{gpu_uuid, GPU_I_ID, metric, source}`:
+
+| Value | Meaning |
+|---|---|
+| `1` | This entity produces this metric |
+| `0` | This entity **cannot** — hardware or driver does not implement it |
+| *absent* | Unknown. Never guessed |
+
+The UI reads this directly: a panel whose metrics are all unsupported says **"Not supported on this GPU"**,
+and a panel that plots four pipes where one is unsupported names the missing one in its legend rather than
+quietly drawing three lines. A blank panel therefore means "nothing happened", not "your card can't do this" —
+those are different answers and the system distinguishes them.
+
+### "Not supported" describes the counter, not the silicon
+
+Measured on an A30: `DCGM_FI_PROF_PIPE_TENSOR_DFMA_ACTIVE` reports unsupported, yet the card demonstrably
+executes FP64 tensor work — a `cublasDgemm` runs at roughly twice the vector-FP64 rate and drives the
+aggregate tensor-pipe metric to near 1.0. DCGM simply has no working per-pipe counter for it on that part.
+
+So a `0` verdict means *this metric cannot be measured here*, not *this hardware cannot do this*. Read the
+aggregate alongside the per-pipe breakdown before concluding a pipe is idle.
+
+### Measured on the validation hardware (A30)
+
+Eight metrics report unsupported on this fleet, and that is a **pass**, not a fault — the system knowing what
+it cannot measure is the feature:
+
+| Metric | Why |
+|---|---|
+| `PIPE_INT_ACTIVE` | No such counter on the A30 |
+| `PIPE_TENSOR_DFMA_ACTIVE` | No working per-pipe counter (see above) |
+| `NVLINK_TX/RX_BYTES` | Device-scope only; reports `0` at MIG-instance scope, and these cards are not bridged |
+| `C2C_TX/RX_ALL_BYTES` | Chip-to-chip is Grace-Hopper; an A30 has no such link |
+| `HOSTMEM_CACHE_HIT/MISS`, `PEERMEM_CACHE_HIT/MISS` | Not implemented on this part |
+
 ## Scope
 
 The system delivers metrics into Prometheus and dashboards in Grafana. It does not include:

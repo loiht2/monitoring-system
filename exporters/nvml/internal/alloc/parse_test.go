@@ -48,7 +48,7 @@ func TestBothGPUsOfAMultiDeviceAnnotationAreReturned(t *testing.T) {
 func TestDRAResultsKeepTheDeviceIdentityUpstreamDiscards(t *testing.T) {
 	// The upstream ML Platform reader sums consumed_capacity and throws away
 	// results[].device, because it only ever needed "how much". That field is
-	// our join key (docs-internal/04 § 1.2).
+	// our join key (specs/04 § 1.2).
 	devices := DevicesFromClaim([]ClaimResult{
 		{Device: "gpu-0", Pool: "node-a", Driver: "gpu.nvidia.com"},
 		{Device: "", Pool: "node-a", Driver: "gpu.nvidia.com"},

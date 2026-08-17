@@ -50,7 +50,7 @@ func TestResolvesContainerNameFromContainerID(t *testing.T) {
 
 func TestUnknownUIDYieldsEmptyLabelsNotAnError(t *testing.T) {
 	// Racing with pod deletion must not drop the measurement
-	// (docs-internal/04 § 3.1).
+	// (specs/04 § 3.1).
 	c := New()
 	c.Upsert(testPod())
 	if ns, name, ctr := c.Lookup("does-not-exist", ""); ns != "" || name != "" || ctr != "" {

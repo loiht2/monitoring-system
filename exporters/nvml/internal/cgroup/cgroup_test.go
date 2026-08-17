@@ -31,7 +31,7 @@ func TestContainerdV1HyphenatedUID(t *testing.T) {
 
 func TestNonPodAndGarbageDegradeToEmpty(t *testing.T) {
 	// The resolver must degrade to an unattributed series, never panic
-	// (docs-internal/04 § 3.1).
+	// (specs/04 § 3.1).
 	for _, in := range []string{"0::/system.slice/sshd.service\n", "", "garbage\n\n"} {
 		if podUID, ctrID := Parse(in); podUID != "" || ctrID != "" {
 			t.Fatalf("Parse(%q) = %q, %q; want empty", in, podUID, ctrID)

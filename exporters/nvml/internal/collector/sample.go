@@ -7,7 +7,7 @@ package collector
 // NotSupported marks a reading the hardware or driver does not provide.
 // Deliberately not zero: a zero is indistinguishable from a real measurement
 // and corrupts every average, rate and alert computed over the series
-// (docs-internal/02 § 5.2).
+// (specs/02 § 5.2).
 const NotSupported = -1
 
 // Sample is one metric value with its label set.

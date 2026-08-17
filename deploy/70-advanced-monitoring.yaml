@@ -1,0 +1,90 @@
+# Advanced monitoring: a native UI over this system's metrics.
+#
+# The browser only ever talks to the UI's own origin: the UI proxies /api/* to the API
+# server-side over in-cluster DNS (advanced-monitoring-ui/app/api/[...path]/route.ts).
+# No API address reaches the browser, so this manifest carries nothing cluster-specific.
+#
+# Both Services are NodePort so the UI is reachable from a workstation browser. A
+# ClusterIP plus `kubectl port-forward` binds to loopback ON THE NODE, so nothing off the
+# node can reach it, and the page renders empty.
+#
+# THIS EXPOSES AN UNAUTHENTICATED API ON THE NODE ADDRESS. /query proxies ARBITRARY
+# PromQL, so anything that can route to the node can read every metric in the
+# cluster. That is acceptable only because this is an isolated validation cluster.
+# Keycloak is a prerequisite for ML Platform integration (specs/12 § 5), and this
+# manifest must not be copied to a routable network before that lands.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: advanced-monitoring-api
+  namespace: gpu-monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: advanced-monitoring-api }
+  template:
+    metadata:
+      labels: { app: advanced-monitoring-api }
+    spec:
+      containers:
+        - name: api
+          image: ghcr.io/loiht2/advanced-monitoring-api:v1.0.0
+          ports: [{ name: http, containerPort: 8000 }]
+          env:
+            - name: PROMETHEUS_URL
+              value: http://prometheus-operated.gpu-monitoring.svc.cluster.local:9090
+            # No CORS_ORIGINS: the UI proxies to this API server-side, so the browser
+            # makes no cross-origin request and there is no origin to allowlist.
+          readinessProbe:
+            httpGet: { path: /healthz, port: http }
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits:   { memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: advanced-monitoring-api
+  namespace: gpu-monitoring
+spec:
+  type: NodePort
+  selector: { app: advanced-monitoring-api }
+  ports: [{ name: http, port: 8000, targetPort: http, nodePort: 30800 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: advanced-monitoring-ui
+  namespace: gpu-monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: advanced-monitoring-ui }
+  template:
+    metadata:
+      labels: { app: advanced-monitoring-ui }
+    spec:
+      containers:
+        - name: ui
+          image: ghcr.io/loiht2/advanced-monitoring-ui:v1.0.0
+          ports: [{ name: http, containerPort: 3002 }]
+          env:
+            # Read by THIS POD, not by the browser: where Next forwards /api/* to. It is
+            # in-cluster DNS precisely because the browser never sees this address.
+            - name: MONITORING_API_UPSTREAM
+              value: http://advanced-monitoring-api:8000
+          readinessProbe:
+            httpGet: { path: /, port: http }
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits:   { memory: 512Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: advanced-monitoring-ui
+  namespace: gpu-monitoring
+spec:
+  type: NodePort
+  selector: { app: advanced-monitoring-ui }
+  ports: [{ name: http, port: 3002, targetPort: http, nodePort: 30802 }]

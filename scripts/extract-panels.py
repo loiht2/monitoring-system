@@ -2,7 +2,7 @@
 """Turn checker-verified Grafana dashboards into the UI's panel spec.
 
 The Grafana JSON is the input because scripts/check-dashboards.py already proves it
-matches docs-internal/02-metric-catalog.md. Deriving from it means the native UI and
+matches specs/02-metric-catalog.md. Deriving from it means the native UI and
 Grafana cannot disagree.
 
 Usage: extract-panels.py <dashboard.json>... -o <panels.json>

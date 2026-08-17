@@ -1,7 +1,7 @@
 // Package cgroup resolves a host PID to the pod and container that own it.
 //
 // A host PID must never become a Prometheus label: PIDs churn without bound and
-// are recycled. This is the first hop of the resolution in docs-internal/01
+// are recycled. This is the first hop of the resolution in specs/01
 // § 2.1 — the PID is discarded before exposition.
 package cgroup
 

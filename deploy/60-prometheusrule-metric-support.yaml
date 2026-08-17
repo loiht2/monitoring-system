@@ -1,0 +1,278 @@
+# Derives gpu_metric_supported for DCGM-owned fields. See specs/10 § 2.2.
+#
+# DCGM is a separate exporter and cannot be asked what a GPU supports, so support is
+# inferred from evidence. A field counts as UNSUPPORTED for a GPU only when all of:
+#
+# The unit is an ENTITY, (gpu_uuid, GPU_I_ID), not a card. DCGM reports one row
+# per entity: a whole card carries no GPU_I_ID, a partitioned card reports only
+# its instances. Grouping by gpu_uuid alone collapses instances into a single
+# verdict for a scope DCGM no longer describes, and leaves instances with none.
+#
+#   1. the DCGM exporter is up          -- otherwise absence means an outage,
+#   2. that GPU reports some other DCGM field -- otherwise absence means the GPU is
+#      not being collected at all,
+#   3. this field is absent for it.
+#
+# Conditions 1 and 2 are what stop an outage from being reported to an operator as a
+# hardware limitation. When either fails the expression yields no series at all, which
+# is the "unknown" case: the dashboard then shows nothing rather than a false claim.
+#
+# Every field below must also be present in 30-dcgm-counters.yaml. A field that was
+# never requested is absent for a reason that has nothing to do with the hardware, and
+# would be reported as unsupported on every GPU.
+#
+# Regenerate rather than hand-editing: the expression is identical for every field.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: gpu-metric-support
+  namespace: gpu-monitoring
+  labels:
+    app.kubernetes.io/part-of: gpu-monitoring
+spec:
+  groups:
+    - name: gpu-metric-support
+      interval: 30s
+      rules:
+        - record: gpu_metric_supported
+          expr: |
+            (
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_PROF_GR_ENGINE_ACTIVE)
+              or
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_DEV_FB_USED) * 0
+            )
+            and on() (max(up{job="nvidia-dcgm-exporter"}) == 1)
+          labels:
+            metric: DCGM_FI_PROF_GR_ENGINE_ACTIVE
+            source: dcgm
+        - record: gpu_metric_supported
+          expr: |
+            (
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_PROF_SM_ACTIVE)
+              or
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_DEV_FB_USED) * 0
+            )
+            and on() (max(up{job="nvidia-dcgm-exporter"}) == 1)
+          labels:
+            metric: DCGM_FI_PROF_SM_ACTIVE
+            source: dcgm
+        - record: gpu_metric_supported
+          expr: |
+            (
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_PROF_SM_OCCUPANCY)
+              or
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_DEV_FB_USED) * 0
+            )
+            and on() (max(up{job="nvidia-dcgm-exporter"}) == 1)
+          labels:
+            metric: DCGM_FI_PROF_SM_OCCUPANCY
+            source: dcgm
+        - record: gpu_metric_supported
+          expr: |
+            (
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_PROF_PIPE_TENSOR_ACTIVE)
+              or
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_DEV_FB_USED) * 0
+            )
+            and on() (max(up{job="nvidia-dcgm-exporter"}) == 1)
+          labels:
+            metric: DCGM_FI_PROF_PIPE_TENSOR_ACTIVE
+            source: dcgm
+        - record: gpu_metric_supported
+          expr: |
+            (
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_PROF_PIPE_TENSOR_HMMA_ACTIVE)
+              or
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_DEV_FB_USED) * 0
+            )
+            and on() (max(up{job="nvidia-dcgm-exporter"}) == 1)
+          labels:
+            metric: DCGM_FI_PROF_PIPE_TENSOR_HMMA_ACTIVE
+            source: dcgm
+        - record: gpu_metric_supported
+          expr: |
+            (
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_PROF_PIPE_TENSOR_IMMA_ACTIVE)
+              or
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_DEV_FB_USED) * 0
+            )
+            and on() (max(up{job="nvidia-dcgm-exporter"}) == 1)
+          labels:
+            metric: DCGM_FI_PROF_PIPE_TENSOR_IMMA_ACTIVE
+            source: dcgm
+        - record: gpu_metric_supported
+          expr: |
+            (
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_PROF_PIPE_TENSOR_DFMA_ACTIVE)
+              or
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_DEV_FB_USED) * 0
+            )
+            and on() (max(up{job="nvidia-dcgm-exporter"}) == 1)
+          labels:
+            metric: DCGM_FI_PROF_PIPE_TENSOR_DFMA_ACTIVE
+            source: dcgm
+        - record: gpu_metric_supported
+          expr: |
+            (
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_PROF_PIPE_FP64_ACTIVE)
+              or
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_DEV_FB_USED) * 0
+            )
+            and on() (max(up{job="nvidia-dcgm-exporter"}) == 1)
+          labels:
+            metric: DCGM_FI_PROF_PIPE_FP64_ACTIVE
+            source: dcgm
+        - record: gpu_metric_supported
+          expr: |
+            (
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_PROF_PIPE_FP32_ACTIVE)
+              or
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_DEV_FB_USED) * 0
+            )
+            and on() (max(up{job="nvidia-dcgm-exporter"}) == 1)
+          labels:
+            metric: DCGM_FI_PROF_PIPE_FP32_ACTIVE
+            source: dcgm
+        - record: gpu_metric_supported
+          expr: |
+            (
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_PROF_PIPE_FP16_ACTIVE)
+              or
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_DEV_FB_USED) * 0
+            )
+            and on() (max(up{job="nvidia-dcgm-exporter"}) == 1)
+          labels:
+            metric: DCGM_FI_PROF_PIPE_FP16_ACTIVE
+            source: dcgm
+        - record: gpu_metric_supported
+          expr: |
+            (
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_PROF_PIPE_INT_ACTIVE)
+              or
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_DEV_FB_USED) * 0
+            )
+            and on() (max(up{job="nvidia-dcgm-exporter"}) == 1)
+          labels:
+            metric: DCGM_FI_PROF_PIPE_INT_ACTIVE
+            source: dcgm
+        - record: gpu_metric_supported
+          expr: |
+            (
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_PROF_DRAM_ACTIVE)
+              or
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_DEV_FB_USED) * 0
+            )
+            and on() (max(up{job="nvidia-dcgm-exporter"}) == 1)
+          labels:
+            metric: DCGM_FI_PROF_DRAM_ACTIVE
+            source: dcgm
+        - record: gpu_metric_supported
+          expr: |
+            (
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_PROF_PCIE_RX_BYTES)
+              or
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_DEV_FB_USED) * 0
+            )
+            and on() (max(up{job="nvidia-dcgm-exporter"}) == 1)
+          labels:
+            metric: DCGM_FI_PROF_PCIE_RX_BYTES
+            source: dcgm
+        - record: gpu_metric_supported
+          expr: |
+            (
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_PROF_PCIE_TX_BYTES)
+              or
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_DEV_FB_USED) * 0
+            )
+            and on() (max(up{job="nvidia-dcgm-exporter"}) == 1)
+          labels:
+            metric: DCGM_FI_PROF_PCIE_TX_BYTES
+            source: dcgm
+        - record: gpu_metric_supported
+          expr: |
+            (
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_PROF_NVLINK_TX_BYTES)
+              or
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_DEV_FB_USED) * 0
+            )
+            and on() (max(up{job="nvidia-dcgm-exporter"}) == 1)
+          labels:
+            metric: DCGM_FI_PROF_NVLINK_TX_BYTES
+            source: dcgm
+        - record: gpu_metric_supported
+          expr: |
+            (
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_PROF_NVLINK_RX_BYTES)
+              or
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_DEV_FB_USED) * 0
+            )
+            and on() (max(up{job="nvidia-dcgm-exporter"}) == 1)
+          labels:
+            metric: DCGM_FI_PROF_NVLINK_RX_BYTES
+            source: dcgm
+        - record: gpu_metric_supported
+          expr: |
+            (
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_PROF_C2C_TX_ALL_BYTES)
+              or
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_DEV_FB_USED) * 0
+            )
+            and on() (max(up{job="nvidia-dcgm-exporter"}) == 1)
+          labels:
+            metric: DCGM_FI_PROF_C2C_TX_ALL_BYTES
+            source: dcgm
+        - record: gpu_metric_supported
+          expr: |
+            (
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_PROF_C2C_RX_ALL_BYTES)
+              or
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_DEV_FB_USED) * 0
+            )
+            and on() (max(up{job="nvidia-dcgm-exporter"}) == 1)
+          labels:
+            metric: DCGM_FI_PROF_C2C_RX_ALL_BYTES
+            source: dcgm
+        - record: gpu_metric_supported
+          expr: |
+            (
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_PROF_HOSTMEM_CACHE_HIT)
+              or
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_DEV_FB_USED) * 0
+            )
+            and on() (max(up{job="nvidia-dcgm-exporter"}) == 1)
+          labels:
+            metric: DCGM_FI_PROF_HOSTMEM_CACHE_HIT
+            source: dcgm
+        - record: gpu_metric_supported
+          expr: |
+            (
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_PROF_HOSTMEM_CACHE_MISS)
+              or
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_DEV_FB_USED) * 0
+            )
+            and on() (max(up{job="nvidia-dcgm-exporter"}) == 1)
+          labels:
+            metric: DCGM_FI_PROF_HOSTMEM_CACHE_MISS
+            source: dcgm
+        - record: gpu_metric_supported
+          expr: |
+            (
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_PROF_PEERMEM_CACHE_HIT)
+              or
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_DEV_FB_USED) * 0
+            )
+            and on() (max(up{job="nvidia-dcgm-exporter"}) == 1)
+          labels:
+            metric: DCGM_FI_PROF_PEERMEM_CACHE_HIT
+            source: dcgm
+        - record: gpu_metric_supported
+          expr: |
+            (
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_PROF_PEERMEM_CACHE_MISS)
+              or
+              group by (gpu_uuid, GPU_I_ID) (DCGM_FI_DEV_FB_USED) * 0
+            )
+            and on() (max(up{job="nvidia-dcgm-exporter"}) == 1)
+          labels:
+            metric: DCGM_FI_PROF_PEERMEM_CACHE_MISS
+            source: dcgm

@@ -48,7 +48,7 @@ func TestEveryEntitlementGetsItsOwnSeries(t *testing.T) {
 
 func TestLabelsAreIdentifiersOnly(t *testing.T) {
 	// No instance profile, no SM count: MIG catalog rows 1-2 are DCGM's
-	// (docs-internal/02 § 3.3).
+	// (specs/02 § 3.3).
 	src := fakeAllocSource{[]Entitlement{{GPUUUID: "GPU-aaa", Namespace: "ns", Pod: "p1"}}}
 	labels := NewAllocCollector(src).Collect()[0].Labels
 	want := map[string]bool{

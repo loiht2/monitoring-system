@@ -22,7 +22,7 @@ type nvmlDevice struct {
 	// physical device it belongs to. Empty for both non-MIG devices and the
 	// MIG-enabled parent handle itself. UUID() reports this instead of the
 	// handle's own UUID so gpu_uuid always names the physical device
-	// (docs-internal/01-architecture.md §3.1); MIGInfo() reports the
+	// (specs/01-architecture.md §3.1); MIGInfo() reports the
 	// instance's own UUID and GPU instance ID.
 	parentUUID string
 	// instanceID is the NVML GPU instance ID (GetGpuInstanceId), captured at
@@ -62,7 +62,7 @@ func (d nvmlDevice) MIGInfo() (string, int, bool) {
 func (d nvmlDevice) MIGEnabled() bool { return d.mig }
 
 // supportFrom maps an NVML return code to a capability fact
-// (docs-internal/10-metric-support-signal.md § 2.1). known=false means the
+// (specs/10-metric-support-signal.md § 2.1). known=false means the
 // call failed for a reason that says nothing about what the hardware can do,
 // so the caller must record no entry at all: a transient error must never
 // become a permanent "unsupported" claim.
@@ -173,7 +173,7 @@ func (d nvmlDevice) State() collector.DeviceState {
 	}
 
 	// Each reading maps its NVML return code three ways
-	// (docs-internal/10-metric-support-signal.md § 2.1): SUCCESS records the
+	// (specs/10-metric-support-signal.md § 2.1): SUCCESS records the
 	// value AND support=true; ERROR_NOT_SUPPORTED records support=false with
 	// no value; any other error leaves the value absent and records NO
 	// support entry at all, because a transient failure is not evidence the
