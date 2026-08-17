@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Sample every DCGM_FI_PROF_* field and print a stable, diffable table.
 # Run this under an identical GPU load before and after a field-list change,
-# then diff the two outputs. See docs-internal/09 A-1.
+# then diff the two outputs. See specs/09 A-1.
 # Usage: scripts/prof-baseline.sh <output-file> [sample-seconds]
 set -euo pipefail
 

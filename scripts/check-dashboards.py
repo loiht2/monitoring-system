@@ -47,11 +47,18 @@ def check(paths):
         # rate. Forcing those to match would make one description describe a metric
         # its panel does not query, so only same-metric panels are compared.
         for p in ls:
-            key = (p["title"], frozenset(
+            exprs = " ".join(t.get("expr", "") for t in p.get("targets", []))
+            # Scope is part of a panel's identity, not an implementation detail: the same
+            # field read at device scope and at instance scope is two different
+            # measurements, which is why they are separate dashboards (11) and why 02
+            # gives them separate definitions. Keying on the metric name alone would
+            # force one panel to carry the other's wording.
+            scope = "instance" if ('GPU_I_ID=~"$migid"' in exprs
+                                   or 'mig_uuid!=""' in exprs) else "device"
+            key = (p["title"], scope, frozenset(
                 itertools.chain.from_iterable(
                     re.findall(r"\bDCGM_FI_[A-Z0-9_]+\b|\bnvml_[a-z0-9_]+\b|\bgpu_[a-z0-9_]+\b",
                                t.get("expr", "")) for t in p.get("targets", []))))
-            shared.setdefault(key, {})[path] = p["description"]
         # (e) MIG panels must filter to instances. `GPU_I_ID=~"$migid"` narrows to one
         # instance but is not sufficient on its own: "All" expands $migid to `.*`, which
         # also matches the empty string, leaking a device-scope row onto this dashboard.
@@ -84,7 +91,7 @@ def check(paths):
                 if "GPUDevice" in t.get("expr", ""):
                     fail.append(f"{path}: '{p['title']}' references a GPUDevice* metric")
     # (c) shared titles must have identical descriptions
-    for (title, _metrics), byfile in shared.items():
+    for (title, _scope, _metrics), byfile in shared.items():
         if len(byfile) > 1 and len(set(byfile.values())) > 1:
             fail.append(f"description for '{title}' differs across dashboards")
     # (h) panels.json must match the dashboards it was generated from. It is a build

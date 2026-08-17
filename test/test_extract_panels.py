@@ -1,5 +1,8 @@
 import json, subprocess, sys, tempfile, pathlib
 
+# Anchored to the repo root rather than the working directory — see test_check_dashboards.
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+
 SAMPLE = {
     "uid": "gpu-hardware-device", "title": "GPU Hardware — Device",
     "templating": {"list": [{"name": "gpu", "query": "label_values(gpu_uuid)",
@@ -28,7 +31,7 @@ def run(tmp):
     src = pathlib.Path(tmp) / "d.json"
     src.write_text(json.dumps(SAMPLE))
     out = pathlib.Path(tmp) / "panels.json"
-    subprocess.run([sys.executable, "scripts/extract-panels.py", str(src), "-o", str(out)],
+    subprocess.run([sys.executable, str(ROOT / "scripts/extract-panels.py"), str(src), "-o", str(out)],
                    check=True)
     return json.loads(out.read_text())
 
@@ -36,8 +39,8 @@ def run_real(tmp):
     """Run the extractor over the checked-in dashboards. Per-dashboard variable ownership
     can only be asserted against the real set, where `pod` exists on one dashboard only."""
     out = pathlib.Path(tmp) / "panels.json"
-    sources = sorted(str(p) for p in pathlib.Path("dashboards").glob("*.json"))
-    subprocess.run([sys.executable, "scripts/extract-panels.py", *sources, "-o", str(out)],
+    sources = sorted(str(p) for p in (ROOT / "dashboards").glob("*.json"))
+    subprocess.run([sys.executable, str(ROOT / "scripts/extract-panels.py"), *sources, "-o", str(out)],
                    check=True)
     return json.loads(out.read_text())
 
