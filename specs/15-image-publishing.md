@@ -106,6 +106,10 @@ Publishing is not proven by a green workflow — a private package pushes fine a
 
 ## 8. Out of scope
 
-Docker Hub mirroring; multi-arch builds (the existing workflows build a single architecture on
-`ubuntu-latest`, matching the GPU nodes); image signing, SBOM, and provenance attestation; the two evaluation
-exercisers.
+Docker Hub mirroring; image signing, SBOM, and provenance attestation; the two evaluation exercisers.
+
+Architecture is not a choice this document makes. The two service images and the NVML exporter build whatever
+`ubuntu-latest` is, a single architecture. The eBPF exporter is different: its submodule Makefile hardcodes a
+`linux/amd64,linux/arm64` buildx build, which the default docker driver cannot perform at all — hence the
+`docker/setup-buildx-action` step in its workflow. Removing that step does not fall back to a single-arch
+build; it fails the job.
