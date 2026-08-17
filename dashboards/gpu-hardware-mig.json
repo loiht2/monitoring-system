@@ -84,7 +84,7 @@
       "id": 1,
       "type": "gauge",
       "title": "GPU Utilization",
-      "description": "Percent of time the MIG instance was actively processing.",
+      "description": "Percent of time the MIG instance was actively processing. Normalized to the MIG instance, not the card: never sum these into a device total.",
       "gridPos": {
         "h": 8,
         "w": 6,
@@ -144,7 +144,7 @@
       "id": 2,
       "type": "timeseries",
       "title": "SM Efficiency",
-      "description": "Percent of cycles where an SM had at least one warp resident.",
+      "description": "Percent of cycles where an SM had at least one warp resident. Normalized to the MIG instance, not the card: never sum these into a device total.",
       "gridPos": {
         "h": 8,
         "w": 9,
@@ -175,7 +175,7 @@
       "id": 3,
       "type": "timeseries",
       "title": "SM Occupancy",
-      "description": "Percent of number of warps resident on an SM.",
+      "description": "Percent of number of warps resident on an SM. Normalized to the MIG instance, not the card: never sum these into a device total.",
       "gridPos": {
         "h": 8,
         "w": 9,
@@ -206,7 +206,7 @@
       "id": 4,
       "type": "timeseries",
       "title": "Tensor Core Utilization",
-      "description": "Percent of cycles when any tensor pipe was active, and per pipe: HMMA, IMMA, DFMA.",
+      "description": "Percent of cycles when any tensor pipe was active, and per pipe: HMMA, IMMA, DFMA. Some of these are not implemented on every GPU; an absent series means unsupported, not idle — see the Metric Support Matrix. Normalized to the MIG instance, not the card: never sum these into a device total.",
       "gridPos": {
         "h": 8,
         "w": 12,
@@ -249,7 +249,7 @@
       "id": 5,
       "type": "timeseries",
       "title": "FP & Integer Utilization",
-      "description": "Percent of cycles when the FP64, FP32, FP16 and integer pipes were active.",
+      "description": "Percent of cycles when the FP64, FP32, FP16 and integer pipes were active. Some of these are not implemented on every GPU; an absent series means unsupported, not idle — see the Metric Support Matrix. Normalized to the MIG instance, not the card: never sum these into a device total.",
       "gridPos": {
         "h": 8,
         "w": 12,
@@ -304,7 +304,7 @@
           "id": 6,
           "type": "bargauge",
           "title": "Memory Used vs Total",
-          "description": "Memory in use, against the memory installed on the card.",
+          "description": "Memory in use inside the instance, against the memory assigned to it. DCGM reports framebuffer in MiB.",
           "gridPos": {
             "h": 8,
             "w": 8,
@@ -364,7 +364,7 @@
           "id": 7,
           "type": "timeseries",
           "title": "Memory Used Over Time",
-          "description": "Memory in use.",
+          "description": "Memory in use inside the instance. DCGM reports framebuffer in MiB.",
           "gridPos": {
             "h": 8,
             "w": 16,
@@ -395,7 +395,7 @@
           "id": 8,
           "type": "timeseries",
           "title": "Memory Held by Each Pod",
-          "description": "Memory in use per process, summed per pod.",
+          "description": "Memory in use per process inside the instance, summed per pod.",
           "gridPos": {
             "h": 8,
             "w": 12,
@@ -426,7 +426,7 @@
           "id": 9,
           "type": "timeseries",
           "title": "Memory Bandwidth Utilization",
-          "description": "Percent of cycles the device memory interface is active.",
+          "description": "Percent of cycles the device memory interface is active. Normalized to the MIG instance, not the card: never sum these into a device total.",
           "gridPos": {
             "h": 8,
             "w": 12,
@@ -471,7 +471,7 @@
           "id": 13,
           "type": "table",
           "title": "Metric Support Matrix",
-          "description": "Whether an entity can produce a metric: 1 supported, 0 not supported, absent when unknown.",
+          "description": "Whether an entity can produce a metric: 1 supported, 0 not supported, absent when unknown. Normalized to the MIG instance, not the card: never sum these into a device total.",
           "gridPos": {
             "h": 14,
             "w": 24,
