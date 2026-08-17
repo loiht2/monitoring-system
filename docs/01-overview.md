@@ -2,8 +2,9 @@
 
 ## What this is
 
-A GPU observability stack for Kubernetes. It exports GPU metrics to Prometheus and presents them in Grafana,
-and it is built to answer one question that a standard GPU monitoring setup cannot:
+A GPU observability stack for Kubernetes. It exports GPU metrics to Prometheus and presents them in a
+purpose-built web UI (Grafana remains available), and it is built to answer one question that a standard GPU
+monitoring setup cannot:
 
 > **Which pod is using the GPU, how hard, and what is it actually doing?**
 
@@ -25,6 +26,21 @@ Three exporters run as DaemonSets on every GPU node. A fourth source is read whe
 Each answers a different question, and each is blind to the others' domain. DCGM knows what the silicon did but
 not who did it. eBPF knows exactly which pod made every CUDA call but nothing about the hardware. NVML is the
 only one that sees both at once, which is why per-pod hardware attribution works at all.
+
+## How you look at it
+
+Two surfaces read the same Prometheus data, so neither can disagree with the other about a number:
+
+| Surface | What it is |
+|---|---|
+| **Advanced monitoring UI** | A purpose-built web UI, deployed by `deploy/70-advanced-monitoring.yaml`. Three tabs — **Device**, **MIG**, **eBPF** — matching the three dashboards. It adds what Grafana renders poorly here: a metric your GPU cannot produce says *"not supported on this GPU"* rather than showing an empty panel |
+| **Grafana** | The same three dashboards, provisioned by `deploy/22-grafana.yaml`. Kept as the debugging fallback and because the dashboard JSON is the source the UI's panel spec is generated from |
+
+The UI's panels are **derived** from the Grafana dashboard JSON rather than written twice, so adding a metric
+is a dashboard edit followed by a regeneration — never a frontend change.
+
+**The UI has no authentication.** It proxies arbitrary PromQL, so anything that can reach it can read every
+metric in the cluster. See [Limitations](05-limitations.md) before exposing it beyond an isolated cluster.
 
 ## What you can ask it
 
