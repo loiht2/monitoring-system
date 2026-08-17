@@ -32,12 +32,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Mirrors the API Dockerfile's python:3.12-slim base, so the tests run on
+      # the version the image actually ships rather than the runner's default.
+      - uses: actions/setup-python@v5
+        if: matrix.name == 'advanced-monitoring-api'
+        with:
+          python-version: "3.12"
+
       - name: Test the API
         if: matrix.name == 'advanced-monitoring-api'
         run: |
           cd ${{ matrix.context }}
           pip install -r requirements.txt
           python -m pytest tests/ -q
+
+      # Mirrors the UI Dockerfile's node:22-alpine base, for the same reason.
+      - uses: actions/setup-node@v4
+        if: matrix.name == 'advanced-monitoring-ui'
+        with:
+          node-version: "22"
 
       - name: Type-check the UI
         if: matrix.name == 'advanced-monitoring-ui'
