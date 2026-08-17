@@ -45,20 +45,35 @@ jobs:
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
 
+      # The multi-platform build exhausted the runner's disk. Reclaiming the
+      # preinstalled toolchains this job never uses buys back roughly 20 GB.
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+                      /usr/local/share/boost "$AGENT_TOOLSDIRECTORY" || true
+          df -h / | tail -1
+
       - name: Build and push
         env:
-          IMG: ghcr.io/${{ github.repository_owner }}/ebpf-gpu-exporter:${{ github.sha }}
           TAGS: ${{ steps.meta.outputs.tags }}
         run: |
           cd exporters/ebpf/eBPF-Lens
-          # image-build, not docker-build: the upstream Makefile defines no
-          # docker-build target. IMG_ORG is asserted by check_defined, so it
-          # must be set even though IMG is given in full.
-          make image-build IMG="$IMG" IMG_ORG=${{ github.repository_owner }}
-          # The Makefile builds exactly one tag, so the rest are aliases of it.
-          # metadata-action emits one tag per line.
-          echo "$TAGS" | while read -r tag; do
-            [ -z "$tag" ] && continue
-            docker tag "$IMG" "$tag"
-            docker push "$tag"
-          done
+          # Generate and vendor once, here on the runner. `make image-build` would
+          # do this and then have the Dockerfile repeat it inside the container for
+          # every platform -- three generations for a two-platform build, which is
+          # what filled the disk.
+          make vendor-obi
+          # DEV_OBI tells the Dockerfile the OBI tree is already generated and
+          # vendored, which is the path its own comment documents for this case.
+          #
+          # Push straight from buildx rather than tagging afterwards: a
+          # multi-platform result never enters the local image store, so a
+          # subsequent `docker tag` has nothing to tag. metadata-action emits one
+          # tag per line; every tag is an alias of the same build.
+          tag_args=""
+          while IFS= read -r t; do
+            [ -n "$t" ] && tag_args="$tag_args -t $t"
+          done <<< "$TAGS"
+          # shellcheck disable=SC2086
+          docker buildx build --build-arg DEV_OBI=1 \
+            --platform linux/amd64,linux/arm64 $tag_args --push .
