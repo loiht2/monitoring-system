@@ -1,0 +1,76 @@
+name: build-services
+
+on:
+  push:
+    paths:
+      - "services/**"
+      - ".github/workflows/build-services.yml"
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Immutable release tag to publish, e.g. v1.0.0. Leave empty for a plain rebuild."
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      # One job per service. The two contexts differ only by directory, image
+      # name and how they are tested, so a matrix beats two near-identical files.
+      fail-fast: false
+      matrix:
+        include:
+          - name: advanced-monitoring-api
+            context: services/advanced-monitoring-api
+          - name: advanced-monitoring-ui
+            context: services/advanced-monitoring-ui
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Test the API
+        if: matrix.name == 'advanced-monitoring-api'
+        run: |
+          cd ${{ matrix.context }}
+          pip install -r requirements.txt
+          python -m pytest tests/ -q
+
+      - name: Type-check the UI
+        if: matrix.name == 'advanced-monitoring-ui'
+        run: |
+          cd ${{ matrix.context }}
+          npm ci
+          npx tsc --noEmit
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/${{ matrix.name }}
+          # The commit and release tags are what a manifest may reference;
+          # latest is for people, and never enters deploy/. release_tag is empty
+          # on a push event, which disables that line.
+          tags: |
+            type=sha,format=long,prefix=
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ inputs.release_tag }},enable=${{ inputs.release_tag != '' }}
+          # Links the GHCR package back to this repository — without it the
+          # package page shows no source.
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+
+      - uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.context }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
