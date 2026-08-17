@@ -1,5 +1,5 @@
 /** The time window model: six one-click presets plus an absolute custom range.
- *  See docs-internal/13-ui-visual-design.md §10. */
+ *  See specs/13-ui-visual-design.md §10. */
 
 export const PRESETS = [
   { label: '5m', seconds: 300 },   { label: '15m', seconds: 900 },

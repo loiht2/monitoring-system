@@ -6,7 +6,7 @@
  *
  * Until this handled the built-ins, all 27 eBPF panels sent literal `$__range` to
  * Prometheus, got a 400, and rendered as "No data in this range". See
- * docs-internal/13-ui-visual-design.md §0.2.
+ * specs/13-ui-visual-design.md §0.2.
  */
 
 /** Escape a label value so it cannot change the meaning of the surrounding regex. */
@@ -65,6 +65,6 @@ export function deriveStep(rangeSeconds: number, targetPoints = 200): number {
   return Math.max(1, Math.floor(rangeSeconds / targetPoints));
 }
 
-/** Matches the widest ServiceMonitor interval in deploy/a30-node/. The widest is the safe
+/** Matches the widest ServiceMonitor interval in deploy/. The widest is the safe
  *  choice: a rate window sized for a faster scrape than the real one yields gaps. */
 export const SCRAPE_INTERVAL_SECONDS = 30;
