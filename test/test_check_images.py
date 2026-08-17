@@ -74,3 +74,38 @@ def test_every_published_image_has_a_publishing_workflow():
     """The set the spec promises to publish, checked against the workflows that
     actually push. A name in one and not the other is a broken promise."""
     assert not check_images.check_workflows()
+
+
+def test_registryless_published_name_is_still_subject_to_the_pin_rule():
+    """A bare name is still one of our images. Letting it skip the pin rule is
+    how a mutable tag gets into deploy/ with the checker green."""
+    assert any("not pinned" in f for f in run("nvml-exporter:latest"))
+
+
+def test_prerelease_tag_is_accepted():
+    """v1.0.0-rc1 is as immutable as v1.0.0 — rejecting it would push people
+    toward a mutable tag instead."""
+    assert not run("ghcr.io/loiht2/nvml-exporter:v1.0.0-rc1")
+
+
+def test_registry_port_does_not_defeat_the_pin_rule():
+    """The registry's port colon must not be mistaken for the tag separator."""
+    assert not run("ghcr.io:5000/loiht2/nvml-exporter:v1.0.0")
+
+
+def test_workflow_that_only_mentions_an_image_does_not_count_as_publishing_it():
+    """A matrix `context:` line or a comment mentioning the name must not
+    satisfy the check — only a step that actually pushes the image does."""
+    import textwrap
+    with tempfile.TemporaryDirectory() as tmp:
+        wf = pathlib.Path(tmp) / "sham.yml"
+        wf.write_text(textwrap.dedent("""\
+            name: sham
+            on: {push: {}}
+            jobs:
+              build:
+                runs-on: ubuntu-latest
+                steps:
+                  - run: echo building nvml-exporter and advanced-monitoring-ui
+            """))
+        assert check_images.published_by(wf.read_text()) == set()
