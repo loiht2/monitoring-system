@@ -122,6 +122,10 @@ kubectl patch clusterpolicies.nvidia.com cluster-policy --type merge \
 
 The operator restarts the DCGM exporter. **This is the only object outside our namespaces that we mutate.**
 
+The patch is idempotent. On a reinstall the `ClusterPolicy` usually still points at the ConfigMap — the
+uninstall in §8 deletes the ConfigMap but not the reference — so you will see `patched (no change)` and no
+restart happens, because none is needed. Take that as success, not as a failed patch.
+
 **Verify** — and take a *before* count first, because the failure mode here is subtractive:
 
 ```bash
