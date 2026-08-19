@@ -91,16 +91,31 @@ aggregate alongside the per-pipe breakdown before concluding a pipe is idle.
 
 ### Measured on the validation hardware (A30)
 
-Eight metrics report unsupported on this fleet, and that is a **pass**, not a fault — the system knowing what
-it cannot measure is the feature:
+**Support is per entity, not per fleet.** The same metric is routinely supported on a whole card and
+unsupported on a MIG instance of that card, so the count depends on which scope you ask about. Both are a
+**pass**, not a fault — the system knowing what it cannot measure is the feature.
+
+Eight DCGM metrics report unsupported at **device scope** (`GPU_I_ID=""`):
 
 | Metric | Why |
 |---|---|
 | `PIPE_INT_ACTIVE` | No such counter on the A30 |
 | `PIPE_TENSOR_DFMA_ACTIVE` | No working per-pipe counter (see above) |
-| `NVLINK_TX/RX_BYTES` | Device-scope only; reports `0` at MIG-instance scope, and these cards are not bridged |
 | `C2C_TX/RX_ALL_BYTES` | Chip-to-chip is Grace-Hopper; an A30 has no such link |
 | `HOSTMEM_CACHE_HIT/MISS`, `PEERMEM_CACHE_HIT/MISS` | Not implemented on this part |
+
+Seventeen report unsupported at **instance scope**: the eight above, plus metrics that exist only for a whole
+card. `NVLINK_TX/RX_BYTES` and `PCIE_TX/RX_BYTES` are device-scope counters — supported on the card here
+(these particular cards are simply not bridged, so NVLINK reads zero), unsupported per instance. So are
+`nvml_gpu_power_watts` and `nvml_gpu_clock_hertz`: power and clocks are properties of the physical board, and
+a MIG instance has no separate ones.
+
+Read the live figures rather than trusting this table after a hardware change:
+
+```bash
+promq 'count by (metric) (gpu_metric_supported{GPU_I_ID=""} == 0)'     # device scope
+promq 'count by (metric) (gpu_metric_supported{GPU_I_ID!=""} == 0)'    # instance scope
+```
 
 ## Scope
 

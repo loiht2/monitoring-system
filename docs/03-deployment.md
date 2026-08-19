@@ -5,33 +5,45 @@
 | Requirement | Why |
 |---|---|
 | Kubernetes with GPU nodes, and a working NVIDIA driver | Everything here reads the driver |
-| **Prometheus Operator, with its controller actually running** | Scrape configuration is `ServiceMonitor` objects. CRDs alone are not enough — see the check below |
+| **Prometheus Operator CRDs** | Scrape configuration is `ServiceMonitor` objects. `deploy/` installs the operator *controller*, but not its CRDs — see below |
 | A container runtime using standard pod cgroup paths | The NVML exporter resolves processes to pods through `/proc` |
 | Kernel with BTF and uprobe support | Required by the eBPF exporter only |
 
-> **Verify the operator, do not assume it.** Prometheus Operator CRDs are often installed without the
-> controller that reconciles them. In that state a `ServiceMonitor` applies successfully and is scraped by
-> nothing. Confirm a controller pod is running before treating any scrape configuration as effective.
-
 ## Install
 
-Manifests are plain YAML, numbered in dependency order, one directory per environment:
+Install the CRDs once, pinned to the same version as the controller `deploy/` runs:
 
 ```bash
-kubectl apply -f deploy/<environment>/
+kubectl apply --server-side -f \
+  https://github.com/prometheus-operator/prometheus-operator/releases/download/v0.92.0/stripped-down-crds.yaml
+```
+
+`--server-side` is required: the bundle is ~1.5 MB, and client-side `kubectl apply` stores the manifest in an
+annotation capped at 262144 bytes, so it fails with `metadata.annotations: Too long`.
+
+Then apply the stack. Manifests are plain YAML, numbered in dependency order:
+
+```bash
+kubectl apply -f deploy/
 ```
 
 | Range | Contents |
 |---|---|
 | `00-` | Namespace |
 | `10-` | RBAC |
-| `20-` | Prometheus Operator, Prometheus, Grafana, storage |
+| `20-` | Prometheus Operator controller, Prometheus, Grafana and the dashboards |
 | `30-` | DCGM configuration |
 | `40-` | NVML and eBPF exporters |
-| `50-` | ServiceMonitors |
-| `60-` | Dashboards |
+| `50-`, `55-` | ServiceMonitors |
+| `60-` | Recording rules — the metric support signal |
+| `70-` | The advanced monitoring UI and its API |
 
-Applying the directory in lexical order produces a working stack from an empty namespace.
+Applying the directory in lexical order produces a working stack from an empty namespace. `kubectl apply -f
+<dir>` is not recursive, so `deploy/optional/` is skipped — see [deploy/README.md](../deploy/README.md).
+
+> **CRDs alone are not enough.** They are often installed without the controller that reconciles them. In that
+> state a `ServiceMonitor` applies successfully and is scraped by nothing. Confirm the controller pod is
+> running before treating any scrape configuration as effective.
 
 ## What gets deployed, and what does not
 

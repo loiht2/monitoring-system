@@ -85,6 +85,47 @@ expression simply returns nothing.
 This system only ever *adds* labels and never renames or removes one, so it should not be the cause. If it
 appears after a change here, compare the label sets of the two metrics involved.
 
+## Grafana is healthy and its GPU folder is empty
+
+Every pod `Running`, `rollout status` reporting success, and no dashboards at all.
+
+The Grafana Deployment mounts one ConfigMap per dashboard, each marked `optional: true` so a missing one
+cannot block startup. That makes the failure **silent**: Grafana starts perfectly and serves nothing.
+
+```bash
+kubectl -n gpu-monitoring get cm | grep grafana-dashboard-
+kubectl -n gpu-monitoring exec deploy/grafana -- ls -R /var/lib/grafana/dashboards
+```
+
+Empty directories mean the ConfigMaps are absent. They are generated into `deploy/22-grafana.yaml` from
+`dashboards/*.json`; regenerate and re-apply:
+
+```bash
+python3 scripts/gen-dashboard-configmaps.py dashboards/*.json --into deploy/22-grafana.yaml
+kubectl apply -f deploy/22-grafana.yaml
+```
+
+`test/test_deploy_manifests.py` fails if any mounted ConfigMap is not created by `deploy/`, which is what
+stops this recurring.
+
+## A UI change was deployed but the browser still shows the old version
+
+The pod restarted, the rollout succeeded, and the fix is not there.
+
+The release tag is rebuilt in place rather than bumped, so the tag alone does not tell the kubelet anything
+changed. `deploy/70-advanced-monitoring.yaml` sets `imagePullPolicy: Always` for exactly this reason — if it
+is ever removed, the default for a non-`latest` tag is `IfNotPresent` and the node silently serves its cached
+layer forever. Confirm what is actually running:
+
+```bash
+kubectl -n gpu-monitoring get pod -l app=advanced-monitoring-ui \
+  -o jsonpath='{.items[0].spec.containers[0].imagePullPolicy}{"\n"}{.items[0].status.containerStatuses[0].imageID}{"\n"}'
+```
+
+The `imageID` digest is the ground truth; compare it against what the build pushed. Note also that
+`services/advanced-monitoring-api/app/panels.json` is **baked into the API image** — editing a dashboard and
+re-applying manifests does not change the UI until that image is rebuilt.
+
 ## Grafana lost a datasource, or a dashboard reverted
 
 Where several components provision Grafana, two things collide: provisioning scripts can delete datasources

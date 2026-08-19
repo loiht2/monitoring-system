@@ -157,10 +157,45 @@ Present only where HAMi's interception library is injected into the container.
 
 ---
 
-## 5. HAMi accounting — `hami_*`
+## 5. HAMi entitlement — `GPUDevice*`
 
-Present only where HAMi's classic device-plugin is deployed. Labels: `namespace`, `pod`, `container`,
-`vdevice_index`, `device_uuid`.
+HAMi ships **two different monitoring components**, and which one you get follows the allocation mechanism,
+not the hardware. Check which you have before reaching for either table below:
+
+```bash
+kubectl -n hami-system get pods -l app.kubernetes.io/component=monitor
+```
+
+| Allocation mechanism | Component | Metric prefix |
+|---|---|---|
+| **DRA** (`resource.k8s.io` ResourceClaims) | `hami-dra-monitor` | `GPUDevice*` — §5.1 |
+| **Classic device-plugin** | vGPUmonitor, a sidecar in the device-plugin DaemonSet | `hami_*` — §5.2 |
+
+`deploy/55-servicemonitor-hami.yaml` selects on the component label, so it scrapes whichever is present.
+
+### 5.1 DRA monitor — `GPUDevice*`
+
+What HAMi has **handed out** on each physical card, against what that card offers. Labels: `deviceuuid`
+(copied to `gpu_uuid`), `nodeid` (copied to `node`), `deviceidx`, `devicename`, `deviceproductname`.
+
+| Metric | Meaning |
+|---|---|
+| `GPUDeviceCoreLimit` | Total core share the device offers, as HAMi counts it — 100 per physical GPU |
+| `GPUDeviceCoreAllocated` | Core share currently granted to claims. The headroom is the difference |
+| `GPUDeviceMemoryLimit` | Device memory HAMi will hand out, in its own units |
+| `GPUDeviceMemoryAllocated` | Device memory currently granted to claims |
+
+These describe **entitlement, not consumption**: `GPUDeviceCoreAllocated` at 95 says HAMi has promised
+95% of the card, not that 95% is being used. Read it against `DCGM_FI_PROF_GR_ENGINE_ACTIVE` to find a
+card that is fully committed and idle — the over-subscription signal.
+
+It is per device only. Nothing here attributes to a pod; `gpu_alloc_device_pod_info` (§3) does that.
+
+### 5.2 vGPUmonitor — `hami_*`
+
+**Present only where HAMi's classic device-plugin is deployed, and therefore absent on a DRA cluster** —
+the DRA driver ships no equivalent. Labels: `namespace`, `pod`, `container`, `vdevice_index`,
+`device_uuid`.
 
 | Metric | Meaning |
 |---|---|
@@ -175,3 +210,26 @@ Present only where HAMi's classic device-plugin is deployed. Labels: `namespace`
 **These deliberately overlap with `nvml_process_*`, and the difference is the point.** HAMi reports what it
 believes; NVML reports what the driver sees. When they disagree, HAMi is enforcing against a number that does
 not match reality — see [04 — Querying](04-querying.md).
+
+---
+
+## 6. Metric support — `gpu_metric_supported`
+
+The one metric that is deliberately allowed to be `0`, because its whole job is to distinguish *cannot* from
+*did not*.
+
+| Metric | Meaning |
+|---|---|
+| `gpu_metric_supported{gpu_uuid, GPU_I_ID, metric, source}` | `1` this entity produces this metric, `0` it cannot, **absent** unknown |
+
+Support is per **entity**, not per fleet: `GPU_I_ID=""` is the whole card, a non-empty `GPU_I_ID` is one MIG
+instance. The same metric is routinely supported on one and not the other — NVLINK throughput is reported at
+device scope on this hardware and unsupported at instance scope, and per-process utilization is the reverse
+of what MIG users expect. Query it before concluding a blank panel is a fault:
+
+```promql
+gpu_metric_supported{metric="DCGM_FI_PROF_PIPE_TENSOR_DFMA_ACTIVE"} == 0
+```
+
+The advanced monitoring UI reads this directly, which is why it can say *"not supported on this GPU"* where
+Grafana can only draw an empty panel. See [05 — Limitations](05-limitations.md).

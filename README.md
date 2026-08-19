@@ -18,7 +18,7 @@ Three exporters run as DaemonSets on every GPU node; a fourth source is read whe
 | **DCGM** | Hardware truth — SM activity and occupancy, tensor and floating-point pipe activity, memory bandwidth, framebuffer, power, thermals, clocks, throttle reasons |
 | **NVML** | Per-pod GPU utilization and memory — the only per-process hardware numbers that exist |
 | **eBPF CUDA tracing** | Per-pod CUDA behaviour — launch rate and latency, allocation and transfer volume, sync waits, errors, HAMi throttling and OOM |
-| **HAMi vGPUmonitor** | HAMi's own accounting — the quota it enforces and what it counts against it |
+| **HAMi monitor** | HAMi's own accounting — entitlement per card under DRA, or the quota it enforces per container under the classic device-plugin |
 
 Each is blind to the others' domain. DCGM knows what the silicon did but not who did it; eBPF knows exactly
 which pod made every call but nothing about the hardware. NVML is the only source that sees both at once, which
@@ -41,8 +41,9 @@ is upstream software, and presentation has two surfaces.
 | `docs/` | How to use the system | The interface changes |
 | `specs/` | What the system must do, and why | A requirement or decision changes |
 
-**Start here:** [`docs/01-overview.md`](docs/01-overview.md) to understand what it does, then
-[`docs/03-deployment.md`](docs/03-deployment.md) to run it. To change it, read
+**Start here:** [`docs/01-overview.md`](docs/01-overview.md) to understand what it does,
+[`docs/07-installation.md`](docs/07-installation.md) to install it on a new cluster, then
+[`docs/08-usage.md`](docs/08-usage.md) to operate it. To change it, read
 [`specs/00-decisions.md`](specs/00-decisions.md) first — it is the contract the rest is written against.
 
 Two directories are deliberately **not** committed: `snapshots/` (pre-replacement configuration captured for
@@ -57,10 +58,12 @@ UUIDs). The specification proper is written to be hardware- and site-agnostic.
 |---|---|
 | [Overview](docs/01-overview.md) | What it is, what you can ask it, what it cannot tell you |
 | [Metrics](docs/02-metrics.md) | Every metric, with what the number means |
-| [Deployment](docs/03-deployment.md) | Prerequisites, install, storage, sizing, verification |
+| [Deployment](docs/03-deployment.md) | What each manifest contains, storage, sizing |
 | [Querying](docs/04-querying.md) | Worked queries for the questions above |
 | [Limitations](docs/05-limitations.md) | What is not obtainable, and why |
 | [Troubleshooting](docs/06-troubleshooting.md) | Failures that look healthy |
+| [Installation](docs/07-installation.md) | **Start-to-finish install on a new cluster**, with a check after every step |
+| [Usage](docs/08-usage.md) | Day-to-day operation: the surfaces, the controls, reading an empty panel |
 
 **[specs/](specs/)** — the normative specification. What the system must do and why it was built this way:
 the source-authority contract, architecture, metric catalogue, per-exporter detail, the dashboard and UI
@@ -76,18 +79,19 @@ The split is by *what the document is for*, not by audience seniority:
 ## Status
 
 **All four sources deployed and validated on an A30 node.** DCGM, NVML and eBPF run as DaemonSets; HAMi's
-vGPUmonitor is consumed where it exists. MIG entitlement (`mig_uuid`) is implemented and exercised against a
+monitor is consumed where it exists. MIG entitlement (`mig_uuid`) is implemented and exercised against a
 mixed `2g.12gb` + 2 × `1g.6gb` layout, where per-instance isolation was measured directly: loading one
 instance leaves its siblings reading exactly zero.
 
 The advanced monitoring UI is deployed alongside Grafana and reads the same Prometheus.
 
-**Metric coverage, measured rather than asserted.** Of the 53 metrics the dashboards plot:
+**Metric coverage, measured rather than asserted.** The dashboards plot **54** metric families. Eight report
+unsupported at device scope and seventeen at MIG-instance scope — a pass, not a fault, and the reason
+`gpu_metric_supported` exists. The counts move with the hardware, so read them live rather than trusting a
+number in a README:
 
-| | |
-|---|---|
-| **43** | observed under a workload built to drive them |
-| **8** | reported unsupported by `gpu_metric_supported` — a pass, not a fault |
-| **2** | unverified, both eBPF exporter gaps recorded as R-7 and R-8 |
+```bash
+promq 'count by (metric) (gpu_metric_supported{GPU_I_ID=""} == 0)'
+```
 
 The NVML exporter's suite runs against fakes, so it needs no GPU or cluster.

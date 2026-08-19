@@ -20,12 +20,13 @@ DCGM_FI_PROF_SM_ACTIVE
   * on(mig_uuid) group_left(namespace, pod) gpu_alloc_device_pod_info{mig_uuid!=""}
 ```
 
-> **Implemented, not yet validated on hardware.** `mig_uuid` is resolved from the NVIDIA DRA driver's
-> ResourceSlice: a device whose `type` is `mig` carries the instance UUID in `uuid` and its physical
-> card in `parentUUID`, so a MIG entitlement populates both labels. The schema comes from the driver's
-> published reference, not from a live probe — MIG is disabled on the validation hardware. The parser
-> skips and logs any device that does not match, so a schema drift degrades to no MIG series rather
-> than to wrong ones.
+> **Validated on hardware.** `mig_uuid` is resolved from the NVIDIA DRA driver's ResourceSlice: a device
+> whose `type` is `mig` carries the instance UUID in `uuid` and its physical card in `parentUUID`, so a MIG
+> entitlement populates both labels. Exercised against a mixed `2g.12gb` + 2 × `1g.6gb` layout, where
+> per-instance isolation was measured directly — loading one instance leaves its siblings reading exactly
+> zero, and a quarter-card slice reads ~1.0 rather than ~0.25, confirming the figure is normalised to the
+> instance and not to the card. The parser skips and logs any device that does not match, so a schema drift
+> degrades to no MIG series rather than to wrong ones.
 
 Because the source differs by GPU mode, a dashboard panel covering both must combine the two rather than pick
 one.
@@ -70,11 +71,10 @@ Note this one CANNOT be narrowed to `gpu_uuid`: the eBPF exporter traces CUDA ca
 which physical GPU a call targeted. So it answers "is this pod doing any GPU work at all", not "is this
 particular card idle". Use the memory-based query above when the pod may hold several GPUs.
 
-```promql
-```
-
-Three independent idle signals exist — absent NVML process metrics, a flat kernel launch rate, and HAMi's
-time-since-last-kernel. Requiring agreement between them is what makes acting on "idle" safe.
+Three independent idle signals exist — absent NVML process metrics, a flat kernel launch rate, and (on a
+classic device-plugin cluster only) HAMi's time-since-last-kernel. Requiring agreement between them is what
+makes acting on "idle" safe: each one alone has a false positive. NVML process metrics are unavailable under
+MIG, the launch rate cannot tell you *which* card is idle, and HAMi's figure exists on only some clusters.
 
 ## Is this workload actually using the accelerator?
 
@@ -147,7 +147,28 @@ Allocation persistently outrunning frees:
 - rate(ebpf_cuda_memory_frees_bytes_total[30m])
 ```
 
+## Has HAMi over-committed a card?
+
+On a **DRA** cluster, the monitor reports entitlement rather than use. A card fully promised but idle is the
+over-subscription signal — someone is holding a share they are not spending:
+
+```promql
+  GPUDeviceCoreAllocated / GPUDeviceCoreLimit > 0.9
+and on(gpu_uuid)
+  (DCGM_FI_PROF_GR_ENGINE_ACTIVE < 0.2)
+```
+
+Remaining headroom before the next claim is refused, which is what a `Pending` pod with an unallocatable
+ResourceClaim means:
+
+```promql
+GPUDeviceCoreLimit - GPUDeviceCoreAllocated
+```
+
 ## Is HAMi enforcing the limit it thinks it is?
+
+> **Classic device-plugin only.** These two queries read `hami_*`, which comes from the vGPUmonitor sidecar.
+> On a DRA cluster they return nothing at all — see [02 § 5](02-metrics.md).
 
 HAMi reports what it counted; NVML reports what the driver sees. A non-zero difference is memory on the card
 that HAMi is not counting toward the pod's quota:

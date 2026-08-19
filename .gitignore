@@ -42,3 +42,7 @@ monitoring-system.code-workspace
 
 # pytest cache
 .pytest_cache/
+
+# Implementation plans are working documents, not part of the specification.
+# specs/plans/ was removed for the same reason.
+docs/superpowers/

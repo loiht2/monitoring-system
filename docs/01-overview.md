@@ -21,7 +21,7 @@ Three exporters run as DaemonSets on every GPU node. A fourth source is read whe
 | **DCGM** | Hardware truth: SM activity and occupancy, tensor and floating-point pipe activity, memory bandwidth, framebuffer, power, temperature, clocks, throttle reasons |
 | **NVML** | Per-pod GPU utilization and per-pod GPU memory — the only per-process hardware numbers available |
 | **eBPF CUDA tracing** | Per-pod CUDA behaviour: kernel launch rate and latency, allocation and transfer volume, synchronization waits, CUDA errors, HAMi throttling and out-of-memory events |
-| **HAMi vGPUmonitor** | What HAMi itself believes and enforces: each container's memory quota and what it counts against it |
+| **HAMi monitor** | What HAMi has handed out: core and memory entitlement per card (`GPUDevice*` under DRA), or each container's quota and what it counts against it (`hami_*` under the classic device-plugin). Which one you get follows the allocation mechanism — see [02 § 5](02-metrics.md) |
 
 Each answers a different question, and each is blind to the others' domain. DCGM knows what the silicon did but
 not who did it. eBPF knows exactly which pod made every CUDA call but nothing about the hardware. NVML is the
