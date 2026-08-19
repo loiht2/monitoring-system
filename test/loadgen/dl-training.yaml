@@ -108,6 +108,9 @@ spec:
           # Pinned to the 2g.12gb instance specifically (more headroom than
           # the 1g.6gb instances) — the mig.nvidia.com DeviceClass alone
           # would pick ANY MIG device, which is not what we want here.
+          # A MIG repartition changes instance UUIDs (specs/09 R-9) and
+          # leaves this pod Pending with no clue why; re-derive the current
+          # UUID with `kubectl get resourceslices` if that happens.
           selectors:
             - cel:
                 expression: device.attributes["gpu.nvidia.com"].uuid == "MIG-0b3da578-1c8f-5c7f-8693-c15984789b66"

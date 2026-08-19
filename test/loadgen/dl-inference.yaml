@@ -101,6 +101,9 @@ spec:
           count: 1
           # Pinned to a 1g.6gb instance — inference needs far less memory
           # than training, so the smallest partition is the deliberate fit.
+          # A MIG repartition changes instance UUIDs (specs/09 R-9) and
+          # leaves this pod Pending with no clue why; re-derive the current
+          # UUID with `kubectl get resourceslices` if that happens.
           selectors:
             - cel:
                 expression: device.attributes["gpu.nvidia.com"].uuid == "MIG-64e3a15c-ddc1-5f08-8bf5-b0099e5e96c9"
