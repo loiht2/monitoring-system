@@ -46,9 +46,17 @@ selectors and storage, and is carried as `REPLACE_ME` tokens documented in `depl
 | `60-` | Recording rules — the metric support signal |
 | `70-` | The advanced monitoring UI and its API |
 
-`kubectl apply -f deploy/` in lexical order must produce a working stack from an empty namespace. Load
-generators are **not** in `deploy/` — they live in `test/loadgen/`, because applying `deploy/` should install
-the monitoring stack and nothing else.
+`kubectl apply -f deploy/` in lexical order must produce a working stack from an empty namespace, given one
+prerequisite: the **Prometheus Operator CRDs**. `deploy/` ships the operator controller but not its CRDs,
+because they cannot be delivered this way — the bundle is ~1.5 MB and client-side `kubectl apply` stores the
+manifest in an annotation capped at 262144 bytes, so it fails with `metadata.annotations: Too long`. They are
+installed once with `kubectl apply --server-side`, which has no such limit ([deploy/README.md](../deploy/README.md)).
+
+CRDs are also the one part of the stack that teardown must leave alone: they are cluster-scoped and shared, so
+deleting one deletes every object of that kind — including any `ServiceMonitor` owned by the GPU Operator.
+
+Load generators are **not** in `deploy/` — they live in `test/loadgen/`, because applying `deploy/` should
+install the monitoring stack and nothing else.
 
 ---
 
