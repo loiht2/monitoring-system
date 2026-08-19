@@ -1,0 +1,132 @@
+# Validation load generator. NOT part of the monitoring system — it exists so
+# that inference-shaped GPU activity (forward-only kernels, CUDA graph
+# replay, CUDA-event timing) is visible across the Device, MIG, and eBPF
+# dashboards. Apply it only while validating, and delete it afterwards.
+#
+# Image: 192.168.6.123:30080/loiht2/deeplearning:resnet50-inference, built
+# and documented in deep-learning-workloads/workloads/resnet-inference/.
+#
+# Requires harbor-pull-secret to exist in this namespace first:
+#   kubectl get secret harbor-pull-secret -n test -o yaml \
+#     | sed 's/namespace: test/namespace: dl-inference/' \
+#     | kubectl apply -f -
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dl-inference
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dl-inference-config
+  namespace: dl-inference
+data:
+  INFER_BATCH_SIZES: "8,16,32,64"
+  INFER_GRAPH_EVERY_N: "5"
+  INFER_FREE_EVERY_N: "20"
+  INFER_DURATION_SECONDS: "1800"
+  INFER_WARMUP_ITERS: "10"
+  INFER_LOG_EVERY_N: "50"
+---
+apiVersion: resource.k8s.io/v1
+kind: ResourceClaim
+metadata:
+  name: infer-device
+  namespace: dl-inference
+spec:
+  devices:
+    requests:
+      - name: gpu
+        exactly:
+          deviceClassName: hami-core-gpu.project-hami.io
+          count: 1
+          selectors:
+            - cel:
+                expression: device.attributes["hami-core-gpu.project-hami.io"].uuid == "GPU-26e02ca7-f4ba-b335-915c-2a8541deb8a4"
+          capacity:
+            requests:
+              cores: "50"
+              memory: 4000Mi
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: dl-inference-device
+  namespace: dl-inference
+  labels:
+    app: dl-inference
+    gpu-scope: device
+spec:
+  restartPolicy: Never
+  imagePullSecrets:
+    - name: harbor-pull-secret
+  containers:
+    - name: infer
+      image: 192.168.6.123:30080/loiht2/deeplearning:resnet50-inference
+      imagePullPolicy: IfNotPresent
+      envFrom:
+        - configMapRef:
+            name: dl-inference-config
+      env:
+        - name: GPU_CORE_UTILIZATION_POLICY
+          value: "force"
+      resources:
+        claims:
+          - name: gpu
+        requests:
+          cpu: "2"
+          memory: "3Gi"
+        limits:
+          memory: "5Gi"
+  resourceClaims:
+    - name: gpu
+      resourceClaimName: infer-device
+---
+apiVersion: resource.k8s.io/v1
+kind: ResourceClaim
+metadata:
+  name: infer-mig
+  namespace: dl-inference
+spec:
+  devices:
+    requests:
+      - name: gpu
+        exactly:
+          deviceClassName: mig.nvidia.com
+          count: 1
+          # Pinned to a 1g.6gb instance — inference needs far less memory
+          # than training, so the smallest partition is the deliberate fit.
+          selectors:
+            - cel:
+                expression: device.attributes["gpu.nvidia.com"].uuid == "MIG-64e3a15c-ddc1-5f08-8bf5-b0099e5e96c9"
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: dl-inference-mig
+  namespace: dl-inference
+  labels:
+    app: dl-inference
+    gpu-scope: mig
+spec:
+  restartPolicy: Never
+  imagePullSecrets:
+    - name: harbor-pull-secret
+  containers:
+    - name: infer
+      image: 192.168.6.123:30080/loiht2/deeplearning:resnet50-inference
+      imagePullPolicy: IfNotPresent
+      envFrom:
+        - configMapRef:
+            name: dl-inference-config
+      resources:
+        claims:
+          - name: gpu
+        requests:
+          cpu: "2"
+          memory: "3Gi"
+        limits:
+          memory: "5Gi"
+  resourceClaims:
+    - name: gpu
+      resourceClaimName: infer-mig
