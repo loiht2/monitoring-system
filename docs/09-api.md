@@ -49,45 +49,88 @@ endpoint.
 
 ## 3. Querying metrics
 
-`/query` and `/query_range` return Prometheus's `data` object **unwrapped** — the `{"status":"success","data":…}`
-envelope is stripped, so you get `resultType` and `result` directly.
-
-**Instant:**
+`/query` and `/query_range` return Prometheus's `data` object **unwrapped** — the
+`{"status":"success","data":…}` envelope is stripped, so you get `resultType` and `result` directly.
 
 ```bash
-curl -s -G "$API/query" --data-urlencode 'q=count(up)'
-```
-```json
-{"resultType": "vector",
- "result": [{"metric": {}, "value": [1787125459.009, "4"]}]}
-```
+API=http://192.168.6.123:30800
 
-Values are **strings**, and timestamps are float epoch seconds — both are Prometheus's own convention, passed
-through unchanged. Parse accordingly.
+# current GPU utilization
+curl -s -G "$API/query" --data-urlencode 'q=DCGM_FI_DEV_GPU_UTIL'
 
-A real series carries its full label set:
-
-```json
-{"metric": {"__name__": "DCGM_FI_DEV_GPU_UTIL",
-            "gpu_uuid": "GPU-26e02ca7-…", "gpu": "0", "node": "a30-node",
-            "modelName": "NVIDIA A30", "pod": "nvidia-dcgm-exporter-mttkr", "…": "…"},
- "value": [1787125459.048, "0"]}
-```
-
-**Range** — `resultType` becomes `matrix` and `value` becomes `values`, a list of pairs:
-
-```bash
+# memory used, last 5 min, one point per minute
 NOW=$(date +%s)
 curl -s -G "$API/query_range" \
-  --data-urlencode 'q=DCGM_FI_DEV_GPU_UTIL' \
+  --data-urlencode 'q=nvml_gpu_memory_used_bytes' \
   --data-urlencode "start=$((NOW-300))" --data-urlencode "end=$NOW" \
   --data-urlencode 'step=60'
 ```
+
+### The instant response
+
+```json
+{"resultType": "vector",
+ "result": [{"metric": {"__name__": "DCGM_FI_DEV_GPU_UTIL", "gpu": "0",
+                        "gpu_uuid": "GPU-26e02ca7-…", "modelName": "NVIDIA A30",
+                        "node": "a30-node"},
+             "value": [1787129605.679, "0"]}]}
+```
+
+`metric` identifies **which** entity the reading belongs to — the label set. `value` is a two-element pair:
+
+| | Example | What it is |
+|---|---|---|
+| `value[0]` | `1787129605.679` | **Unix epoch seconds**, fraction = milliseconds. Here `2026-08-19 08:53:25.679 UTC`. A JSON **number** |
+| `value[1]` | `"0"` | The reading — GPU 0 was 0% utilized. Always a JSON **string**, even for numbers |
+
+So this says: *at 08:53:25 UTC, GPU 0 (an A30 on a30-node) was at 0% utilization.*
+
+Converting the timestamp:
+
+```bash
+date -u -d @1787129605.679          # 2026-08-19 08:53:25 UTC
+```
+```python
+from datetime import datetime, timezone
+datetime.fromtimestamp(1787129605.679, timezone.utc)
+```
+
+> **The value is a string on purpose** — Prometheus uses it to carry `NaN`, `+Inf` and full float64
+> precision, which JSON numbers cannot represent losslessly. Convert it (`float()`, `parseFloat`) before
+> doing arithmetic, or you will silently concatenate instead of adding.
+
+> **Most languages default to milliseconds.** JavaScript's `new Date(1787129605.679)` gives 1970 — you need
+> `new Date(ts * 1000)`. Same trap in Java and Go.
+
+### The range response
+
+`resultType` becomes `matrix`, and the single `value` becomes `values` — a list of the same pairs, one per
+step:
+
 ```json
 {"resultType": "matrix",
- "result": [{"metric": {"__name__": "DCGM_FI_DEV_GPU_UTIL", "gpu_uuid": "GPU-26e02ca7-…"},
-             "values": [[1787125171, "0"], [1787125231, "0"], [1787125291, "0"]]}]}
+ "result": [{"metric": {"__name__": "nvml_gpu_memory_used_bytes", "gpu": "1",
+                        "gpu_uuid": "GPU-a4d27439-…"},
+             "values": [[1787129305, "52494336"],
+                        [1787129365, "52494336"],
+                        [1787129425, "52494336"]]}]}
 ```
+
+Read as a table — `step=60` put the points one minute apart:
+
+| `value[0]` | UTC | `value[1]` | Meaning |
+|---|---|---|---|
+| `1787129305` | 08:48:25 | `"52494336"` | 0.05 GiB in use on GPU 1 |
+| `1787129365` | 08:49:25 | `"52494336"` | unchanged a minute later |
+| `1787129425` | 08:50:25 | `"52494336"` | unchanged |
+
+Range timestamps are the **step boundaries you asked for**, so they line up exactly with your window.
+Instant timestamps are the **evaluation time** — when you asked — and Prometheus looks back up to 5 minutes
+for the most recent sample, so a value stamped 08:53:25 may have been scraped at 08:51. When the exact
+collection time matters, as in billing, use `/query_range` with explicit `start` and `end`.
+
+One series is returned **per label set**, so `nvml_gpu_memory_used_bytes` gives one entry per card and per
+MIG instance. Filter in the query (`{gpu_uuid="…"}`) rather than in your client.
 
 **What you can ask for is everything Prometheus holds** — all four sources plus the derived signals. This API
 neither curates nor restricts the metric set:
