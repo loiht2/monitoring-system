@@ -11,6 +11,11 @@ export function formatValue(v: number, unit?: string): string {
     case 'Bps':         return `${bytes(v)}/s`;
     case 's':           return duration(v);
     case 'ops':         return `${si(v, '')} ops/s`;
+    // Named for what they count, not the generic `ops`: the dashboard sets these so a
+    // reader sees "allocations/s" rather than an unlabelled rate. Grafana appends an
+    // unknown unit string as a suffix; without these cases the UI dropped the label.
+    case 'allocations/s': return `${si(v, '')} allocations/s`;
+    case 'frees/s':       return `${si(v, '')} frees/s`;
     default:            return si(v, '');
   }
 }

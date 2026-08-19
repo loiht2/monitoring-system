@@ -66,3 +66,22 @@ describe('formatValue — hertz', () => {
     expect(formatValue(1234, undefined)).toBe('1.2K');
   });
 });
+
+describe('formatValue — custom rate units carried from the dashboard', () => {
+  // The eBPF dashboard names these two rates for what they count rather than the
+  // generic `ops`. Grafana appends an unrecognised unit string as a suffix; without a
+  // case here the UI fell through to `si()` and dropped the label entirely, so the
+  // panel read as a bare number.
+  it('renders an allocation rate with its own suffix', () => {
+    expect(formatValue(1234, 'allocations/s')).toBe('1.2K allocations/s');
+    expect(formatValue(7, 'allocations/s')).toBe('7.00 allocations/s');
+  });
+
+  it('renders a free rate with its own suffix', () => {
+    expect(formatValue(1234, 'frees/s')).toBe('1.2K frees/s');
+  });
+
+  it('still falls back to a bare number for a unit it does not know', () => {
+    expect(formatValue(1234, 'si:B/allocation')).toBe('1.2K');
+  });
+});
