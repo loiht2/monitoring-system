@@ -87,7 +87,10 @@ export function StatPanel({ spec, vars, start, end, tick, supported,
         {path && (
           <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden
                style={{ flex: '0 0 45%', width: '45%', height: '60%' }}>
-            <path d={path.area} fill={`${SERIES[0]}1a`} stroke="none" />
+            {/* fillOpacity, not an alpha suffix on the colour: the palette is exposed as
+                CSS tokens now, and "var(--series-1)1a" is not a colour — SVG discards it
+                and paints the area solid black. */}
+            <path d={path.area} fill={SERIES[0]} fillOpacity={0.1} stroke="none" />
             <path d={path.line} fill="none" stroke={SERIES[0]} strokeWidth={1.5}
                   vectorEffect="non-scaling-stroke" />
           </svg>

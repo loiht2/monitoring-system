@@ -2,6 +2,7 @@
 import { ReactNode } from 'react';
 import { Catalog } from '@/lib/api';
 import { INK, SERIES, STATUS, SURFACE } from '@/lib/theme';
+import { ThemeToggle } from './ThemeToggle';
 
 /** Banner tone by dashboard uid: the MIG description is a correctness warning
  *  (instance utilisation must never be summed into a device total), the rest are
@@ -43,11 +44,14 @@ export function AppShell({ catalog, activeIndex, onSelect, eyebrow, lastUpdated,
         <span style={{ color: INK.primary, fontSize: '0.95rem', fontWeight: 600 }}>
           GPU observability
         </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: '0.45rem',
+        <span style={{ display: 'flex', alignItems: 'center', gap: '0.9rem',
                        color: INK.secondary, fontSize: '0.8rem' }}>
-          <span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%',
-                                     background: STATUS.good, display: 'inline-block' }} />
-          Updated {updatedAt(lastUpdated)}
+          <span style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+            <span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%',
+                                       background: STATUS.good, display: 'inline-block' }} />
+            Updated {updatedAt(lastUpdated)}
+          </span>
+          <ThemeToggle />
         </span>
       </header>
 

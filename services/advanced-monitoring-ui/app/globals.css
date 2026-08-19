@@ -1,3 +1,8 @@
+/* Token bindings for both themes. The hexes here mirror DARK and LIGHT in lib/theme.ts,
+   which is the source of truth; lib/theme.test.ts fails if the two drift apart.
+
+   Dark is the default so a page rendered before the theme script runs is already dark —
+   the reverse would flash white on every load. */
 :root {
   --bg-page: #0b0f16;
   --bg-panel: #131922;
@@ -7,12 +12,69 @@
   --text-main: #e6edf3;
   --text-muted: #9aa7b4;
   --text-dim: #6e7d8d;
+
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --series-6: #008300;
+  --series-7: #9085e9;
+  --series-8: #e66767;
+
+  --seq-1: #0d366b;
+  --seq-2: #184f95;
+  --seq-3: #1c5cab;
+  --seq-4: #256abf;
+  --seq-5: #2a78d6;
+  --seq-6: #3987e5;
+  --seq-7: #5598e7;
+  --seq-8: #86b6ef;
+  --seq-9: #cde2fb;
+
   --accent: #3987e5;
   --good: #0ca30c;
   --warning: #fab219;
   --serious: #ec835a;
   --critical: #d03b3b;
   --radius: 10px;
+}
+
+:root[data-theme='light'] {
+  --bg-page: #eef1f5;
+  --bg-panel: #f6f8fa;
+  --bg-raised: #e9edf2;
+  --border-color: rgba(15, 23, 36, 0.12);
+  --grid-color: rgba(15, 23, 36, 0.09);
+  --text-main: #141a21;
+  --text-muted: #4a5763;
+  --text-dim: #697787;
+
+  --series-1: #0d98d3;
+  --series-2: #ad5c0b;
+  --series-3: #17a140;
+  --series-4: #7f27a5;
+  --series-5: #741b1b;
+  --series-6: #246b5d;
+  --series-7: #2d1b74;
+  --series-8: #f0199a;
+
+  /* Reversed against dark: the near-zero end recedes into a light page. */
+  --seq-1: #cde2fb;
+  --seq-2: #86b6ef;
+  --seq-3: #5598e7;
+  --seq-4: #3987e5;
+  --seq-5: #2a78d6;
+  --seq-6: #256abf;
+  --seq-7: #1c5cab;
+  --seq-8: #184f95;
+  --seq-9: #0d366b;
+
+  --accent: #0d98d3;
+  --good: #0a7a0a;
+  --warning: #a06800;
+  --serious: #bf5218;
+  --critical: #b02525;
 }
 
 * { box-sizing: border-box; }
