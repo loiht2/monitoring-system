@@ -66,7 +66,7 @@ spec:
     spec:
       containers:
         - name: ui
-          image: ghcr.io/loiht2/advanced-monitoring-ui:v1.0.0
+          image: ghcr.io/loiht2/advanced-monitoring-ui:v1.0.1
           ports: [{ name: http, containerPort: 3002 }]
           env:
             # Read by THIS POD, not by the browser: where Next forwards /api/* to. It is
