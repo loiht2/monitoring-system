@@ -3,8 +3,8 @@
 `advanced-monitoring-api` is a **read-only proxy over Prometheus, plus the panel spec**. It stores nothing
 and computes nothing: every number it returns came from Prometheus on that request.
 
-It exists so the UI has one origin to talk to and one place the dashboard definition lives. It is also the
-supported way to script against this system, or to build another frontend without re-deriving panels.
+It exists so the UI has one origin to talk to and one place the dashboard definition lives. It is also how
+you script against this system — reading metrics without going through either dashboard.
 
 ---
 
@@ -101,8 +101,38 @@ neither curates nor restricts the metric set:
 | `gpu_alloc_device_pod_info` | Which pod holds which GPU |
 | `gpu_metric_supported` | Whether an entity *can* produce a metric |
 
-See [02 — Metrics](02-metrics.md) for what each means, and [04 — Querying](04-querying.md) for worked
-expressions.
+### Worked examples
+
+```bash
+# utilization per card
+curl -s -G "$API/query" --data-urlencode 'q=DCGM_FI_DEV_GPU_UTIL'
+
+# memory in use, per card and per MIG instance
+curl -s -G "$API/query" --data-urlencode 'q=nvml_gpu_memory_used_bytes'
+
+# which pod holds which GPU — empty when nothing is allocated
+curl -s -G "$API/query" --data-urlencode 'q=gpu_alloc_device_pod_info'
+
+# per-pod share of a shared card
+curl -s -G "$API/query" \
+  --data-urlencode 'q=sum by (namespace, pod, gpu_uuid) (nvml_process_sm_utilization_ratio)'
+```
+
+Pull just the numbers out rather than reading raw JSON:
+
+```bash
+curl -s -G "$API/query" --data-urlencode 'q=DCGM_FI_DEV_GPU_UTIL' | python3 -c "
+import json, sys
+for x in json.load(sys.stdin)['result']:
+    print(f\"gpu{x['metric']['gpu']} {x['metric']['modelName']}: {x['value'][1]}%\")"
+# gpu0 NVIDIA A30: 0%
+```
+
+**Always `--data-urlencode`.** PromQL contains `{`, `}`, `=`, `+` and spaces; a raw URL mangles them and you
+get a parse error from Prometheus rather than an obvious client-side failure.
+
+See [02 — Metrics](02-metrics.md) for what each metric means, and [04 — Querying](04-querying.md) for
+expressions that answer real questions.
 
 ---
 
@@ -138,8 +168,17 @@ Each panel carries what a renderer needs and nothing Grafana-specific:
 styles are deliberately **dropped** — they are Grafana rendering concerns, not part of the panel's meaning.
 
 **A panel's `expr` still contains `$gpu`, `$pod`, `$__rate_interval` and `$__range`.** Substitution is the
-caller's job; the spec stays byte-identical to the dashboard JSON it came from. Send an unsubstituted `$__range`
-to `/query` and Prometheus rejects it with a 400 → 503.
+caller's job; the spec stays byte-identical to the dashboard JSON it came from. Send an unsubstituted
+`$__range` to `/query` and Prometheus rejects it with a 400 → 503.
+
+Two rules if you do substitute them yourself, both learned the hard way here:
+
+- **A selection matching nothing must not become `.*`.** An empty `$pod` means *no pods*, and an empty
+  alternation matches *every* pod — the exact inversion of what was asked for.
+- **`$__rate_interval` is `max(step + scrape, 4 × scrape)`**, where the scrape interval in this deployment is
+  **30s**. Narrower than that and the rate window straddles too few samples, producing gaps.
+
+`services/advanced-monitoring-ui/lib/promql.ts` is the reference implementation.
 
 > `/catalog` is served from `panels.json` **baked into the image**, not read from `dashboards/`. Editing a
 > dashboard changes Grafana immediately and changes this endpoint only after the API image is rebuilt — see
@@ -210,25 +249,3 @@ the code default applies. The deployed UI does not rely on CORS at all — it pr
 the browser only ever calls the UI's own origin and there is no cross-origin request to allowlist. The
 setting matters only when a browser hits this API directly in development, where `localhost` and
 `127.0.0.1` count as two different origins.
-
----
-
-## 8. Building another frontend
-
-`/catalog` plus `/query_range` is the whole contract. The sequence:
-
-1. `GET /catalog` once.
-2. For each panel, substitute `$gpu`, `$pod`, `$migid` from your own controls, and Grafana's built-ins:
-   `$__range` → the window as a PromQL duration, `$__rate_interval` → `max(step + scrape, 4 × scrape)`
-   where the scrape interval here is **30s**.
-3. `GET /query_range` per target; render by `type`, format by `unit`, place by `gridPos`.
-
-Two rules worth carrying over, both learned the hard way:
-
-- **`$pod` matching nothing must not become `.*`.** An empty selection means *no pods*, and substituting an
-  empty alternation makes it match *every* pod — the exact inversion of what the user asked for.
-- **Aggregate eBPF metrics by `k8s_namespace_name` and `k8s_pod_name`**, never `namespace`/`pod`. The latter
-  exist and describe the exporter's own pod, so the query returns a plausible number attributed to the wrong
-  thing.
-
-The reference implementation is `services/advanced-monitoring-ui/lib/promql.ts`.
