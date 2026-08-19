@@ -62,8 +62,13 @@ curl -s -G "$API/query" --data-urlencode 'q=count(up)'
  "result": [{"metric": {}, "value": [1787125459.009, "4"]}]}
 ```
 
-Values are **strings**, and timestamps are float epoch seconds — both are Prometheus's own convention, passed
-through unchanged. Parse accordingly.
+Each sample is a `[timestamp, value]` pair:
+
+- **`1787125459.009`** — Unix epoch **seconds**, the fraction being milliseconds. Here `2026-08-19 07:44:19
+  UTC`. Convert with `date -u -d @1787125459` or `datetime.fromtimestamp(ts, timezone.utc)`. Note most
+  languages expect milliseconds, so JavaScript needs `new Date(ts * 1000)`.
+- **`"4"`** — the reading, always a **string**. Prometheus uses strings to carry `NaN` and `+Inf`, so convert
+  before doing arithmetic.
 
 A real series carries its full label set:
 
