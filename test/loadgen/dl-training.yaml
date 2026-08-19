@@ -1,0 +1,158 @@
+# Validation load generator. NOT part of the monitoring system — it exists so
+# that training-shaped GPU activity (backward pass, optimizer step, varied
+# batch traffic) is visible across the Device, MIG, and eBPF dashboards.
+# Apply it only while validating, and delete it afterwards.
+#
+# Image: 192.168.6.123:30080/loiht2/deeplearning:cnn-training, built and
+# documented in deep-learning-workloads/workloads/resnet/. Reused unmodified —
+# this file only adds deployment, no training code changes.
+#
+# Requires harbor-pull-secret to exist in this namespace first:
+#   kubectl get secret harbor-pull-secret -n test -o yaml \
+#     | sed 's/namespace: test/namespace: dl-training/' \
+#     | kubectl apply -f -
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dl-training
+---
+apiVersion: resource.k8s.io/v1
+kind: ResourceClaim
+metadata:
+  name: train-device
+  namespace: dl-training
+spec:
+  devices:
+    requests:
+      - name: gpu
+        exactly:
+          deviceClassName: hami-core-gpu.project-hami.io
+          count: 1
+          selectors:
+            - cel:
+                expression: device.attributes["hami-core-gpu.project-hami.io"].uuid == "GPU-26e02ca7-f4ba-b335-915c-2a8541deb8a4"
+          capacity:
+            requests:
+              # Generously above HAMi's documented 30% minimum, deliberately:
+              # this is meant to be realistic traffic, not a throttle test.
+              cores: "70"
+              memory: 10000Mi
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: dl-training-device
+  namespace: dl-training
+  labels:
+    app: dl-training
+    gpu-scope: device
+spec:
+  restartPolicy: Never
+  imagePullSecrets:
+    - name: harbor-pull-secret
+  containers:
+    - name: cnn
+      image: 192.168.6.123:30080/loiht2/deeplearning:cnn-training
+      imagePullPolicy: IfNotPresent
+      # Overrides the image's baked-in `CMD` (resnet18, no explicit batch
+      # size). --dummy runs 90 epochs of synthetic data by default — far
+      # longer than any manual verification session needs, so no wrapper
+      # loop is necessary here, unlike the inference workload.
+      command: ["python", "main.py",
+                "-a", "resnet50",
+                "--dummy",
+                "--batch-size", "64",
+                "--workers", "4",
+                "--print-freq", "10"]
+      env:
+        - name: GPU_CORE_UTILIZATION_POLICY
+          value: "force"
+        - name: PYTHONUNBUFFERED
+          value: "1"
+      resources:
+        claims:
+          - name: gpu
+        requests:
+          cpu: "4"
+          memory: "5Gi"
+        limits:
+          memory: "9Gi"
+      volumeMounts:
+        - name: shm
+          mountPath: /dev/shm
+  volumes:
+    - name: shm
+      emptyDir:
+        medium: Memory
+        sizeLimit: 2Gi
+  resourceClaims:
+    - name: gpu
+      resourceClaimName: train-device
+---
+apiVersion: resource.k8s.io/v1
+kind: ResourceClaim
+metadata:
+  name: train-mig
+  namespace: dl-training
+spec:
+  devices:
+    requests:
+      - name: gpu
+        exactly:
+          deviceClassName: mig.nvidia.com
+          count: 1
+          # Pinned to the 2g.12gb instance specifically (more headroom than
+          # the 1g.6gb instances) — the mig.nvidia.com DeviceClass alone
+          # would pick ANY MIG device, which is not what we want here.
+          selectors:
+            - cel:
+                expression: device.attributes["gpu.nvidia.com"].uuid == "MIG-0b3da578-1c8f-5c7f-8693-c15984789b66"
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: dl-training-mig
+  namespace: dl-training
+  labels:
+    app: dl-training
+    gpu-scope: mig
+spec:
+  restartPolicy: Never
+  imagePullSecrets:
+    - name: harbor-pull-secret
+  containers:
+    - name: cnn
+      image: 192.168.6.123:30080/loiht2/deeplearning:cnn-training
+      imagePullPolicy: IfNotPresent
+      # Half the whole-GPU batch: the 2g.12gb instance has less headroom
+      # than the whole-GPU claim's 10000Mi, and MIG has no software
+      # throttle to fall back on if this doesn't fit — the hardware
+      # partition is a hard ceiling, not a request.
+      command: ["python", "main.py",
+                "-a", "resnet50",
+                "--dummy",
+                "--batch-size", "32",
+                "--workers", "4",
+                "--print-freq", "10"]
+      env:
+        - name: PYTHONUNBUFFERED
+          value: "1"
+      resources:
+        claims:
+          - name: gpu
+        requests:
+          cpu: "4"
+          memory: "5Gi"
+        limits:
+          memory: "9Gi"
+      volumeMounts:
+        - name: shm
+          mountPath: /dev/shm
+  volumes:
+    - name: shm
+      emptyDir:
+        medium: Memory
+        sizeLimit: 2Gi
+  resourceClaims:
+    - name: gpu
+      resourceClaimName: train-mig
