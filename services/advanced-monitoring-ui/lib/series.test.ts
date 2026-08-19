@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { seriesKey, assignColors, seriesLabel } from './series';
+import { seriesKey, assignColors, seriesLabel, targetSeriesKey } from './series';
 import { SERIES, OTHER } from './theme';
 
 describe('seriesKey', () => {
@@ -58,6 +58,27 @@ describe('assignColors', () => {
   it('uses every slot before folding', () => {
     const eight = Array.from({ length: 8 }, (_, i) => ({ pod: `p${i}` }));
     expect(new Set(Object.values(assignColors(eight, {})))).toEqual(new Set(SERIES));
+  });
+});
+
+describe('targetSeriesKey', () => {
+  // A P95 and P99 histogram_quantile() query over the same series returns identically
+  // labelled results — the quantile is a query-time constant, never a Prometheus label.
+  // Plain seriesKey() collapses them to one colour slot; a reader can't tell the two
+  // lines apart, and toggling one in the legend toggles both. This is the exact case
+  // that broke on the eBPF dashboard's P95/P99 panels.
+  const labels = { k8s_pod_name: 'dl-inference-device', gpu_uuid: 'GPU-26e0' };
+
+  it('gives two targets over identical labels distinct keys', () => {
+    expect(targetSeriesKey(0, labels)).not.toBe(targetSeriesKey(1, labels));
+  });
+
+  it('still separates genuinely different series within the same target', () => {
+    expect(targetSeriesKey(0, { pod: 'a' })).not.toBe(targetSeriesKey(0, { pod: 'b' }));
+  });
+
+  it('is deterministic for the same target index and labels', () => {
+    expect(targetSeriesKey(1, labels)).toBe(targetSeriesKey(1, { ...labels }));
   });
 });
 
