@@ -35,7 +35,11 @@ spec:
             requests:
               # Generously above HAMi's documented 30% minimum, deliberately:
               # this is meant to be realistic traffic, not a throttle test.
-              cores: "70"
+              # 65, not more: dl-inference.yaml's whole-GPU claim targets this
+              # same physical GPU (there's only one non-MIG card on this
+              # node) at 30% cores, and the DRA capacity slice caps at 100%
+              # total — 65+30 leaves headroom if both loadgens run together.
+              cores: "65"
               memory: 10000Mi
 ---
 apiVersion: v1
