@@ -35,7 +35,7 @@ spec:
     - name: harbor-pull-secret
   containers:
     - name: gpu-burn
-      image: ghcr.io/loiht2/gpu-burn:cuda13-multi
+      image: docker.io/loihoangthanh1411/gpu-burn:cuda13-multi
       env:
         # Deliberately small: the workload must saturate the instance without
         # the instance's 5.81 GiB being the limiting factor.

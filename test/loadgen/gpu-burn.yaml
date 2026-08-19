@@ -63,7 +63,7 @@ spec:
   restartPolicy: Never
   containers:
     - name: gpu-burn
-      image: ghcr.io/loiht2/gpu-burn:cuda13-multi
+      image: docker.io/loihoangthanh1411/gpu-burn:cuda13-multi
       envFrom:
         - configMapRef:
             name: gpu-burn-config
@@ -110,7 +110,7 @@ spec:
   restartPolicy: Never
   containers:
     - name: gpu-burn
-      image: ghcr.io/loiht2/gpu-burn:cuda13-multi
+      image: docker.io/loihoangthanh1411/gpu-burn:cuda13-multi
       envFrom:
         - configMapRef:
             name: gpu-burn-config
