@@ -3,7 +3,7 @@
     {
       "uid": "gpu-hardware-device",
       "title": "GPU Hardware — Device",
-      "description": "What a whole physical card is doing, who holds it, and whether it is healthy. DCGM is the source for device readings; NVML is retained for exactly three panels DCGM cannot supply (GPU Utilization per Pod, Memory Held by Each Pod, Clocks Throttle Reasons). Every DCGM panel filters to the whole-device entity (GPU_I_ID=\"\") and every retained nvml_* panel filters to the whole-device reading (mig_uuid=\"\"), so a MIG-partitioned card's instance-scoped reading is never double-counted into a device total; see GPU Hardware — MIG for the per-instance view.",
+      "description": "What a whole physical card is doing, who holds it, and whether it is healthy. DCGM is the source for device readings; NVML is retained for exactly three panels DCGM cannot supply (GPU Utilization per Pod, Memory Held by Each Pod, Clocks Throttle Reasons).",
       "variables": [
         {
           "name": "gpu",
@@ -55,7 +55,8 @@
                   "legendFormat": "{{namespace}}/{{pod}}"
                 }
               ],
-              "unit": "percentunit"
+              "unit": "percentunit",
+              "min": 0
             },
             {
               "id": 3,
@@ -74,13 +75,15 @@
                   "legendFormat": "{{node}} gpu{{gpu}}"
                 }
               ],
-              "unit": "percentunit"
+              "unit": "percentunit",
+              "min": 0,
+              "max": 1
             },
             {
               "id": 4,
               "type": "timeseries",
               "title": "SM Occupancy",
-              "description": "Percent of number of warps resident on an SM. Normalized to the MIG instance, not the card: never sum these into a device total.",
+              "description": "Percent of number of warps resident on an SM.",
               "gridPos": {
                 "h": 8,
                 "w": 8,
@@ -93,13 +96,15 @@
                   "legendFormat": "{{node}} gpu{{gpu}}"
                 }
               ],
-              "unit": "percentunit"
+              "unit": "percentunit",
+              "min": 0,
+              "max": 1
             },
             {
               "id": 5,
               "type": "timeseries",
               "title": "Tensor Core Utilization",
-              "description": "Percent of cycles when any tensor pipe was active, and per pipe: HMMA, IMMA, DFMA. Some of these are not implemented on every GPU; an absent series means unsupported, not idle — see the Metric Support Matrix. Normalized to the MIG instance, not the card: never sum these into a device total.",
+              "description": "Percent of cycles when any tensor pipe was active, and per pipe: HMMA, IMMA, DFMA. Some of these are not implemented on every GPU; an absent series means unsupported, not idle — see the Metric Support Matrix.",
               "gridPos": {
                 "h": 8,
                 "w": 8,
@@ -124,13 +129,15 @@
                   "legendFormat": "{{node}} gpu{{gpu}} · DFMA"
                 }
               ],
-              "unit": "percentunit"
+              "unit": "percentunit",
+              "min": 0,
+              "max": 1
             },
             {
               "id": 6,
               "type": "timeseries",
               "title": "FP & Integer Utilization",
-              "description": "Percent of cycles when the FP64, FP32, FP16 and integer pipes were active. Some of these are not implemented on every GPU; an absent series means unsupported, not idle — see the Metric Support Matrix. Normalized to the MIG instance, not the card: never sum these into a device total.",
+              "description": "Percent of cycles when the FP64, FP32, FP16 and integer pipes were active. Some of these are not implemented on every GPU; an absent series means unsupported, not idle — see the Metric Support Matrix.",
               "gridPos": {
                 "h": 8,
                 "w": 8,
@@ -155,7 +162,9 @@
                   "legendFormat": "{{node}} gpu{{gpu}} · integer"
                 }
               ],
-              "unit": "percentunit"
+              "unit": "percentunit",
+              "min": 0,
+              "max": 1
             },
             {
               "id": 7,
@@ -178,7 +187,9 @@
                   "legendFormat": "{{node}} gpu{{gpu}} · peer"
                 }
               ],
-              "unit": "percentunit"
+              "unit": "percentunit",
+              "min": 0,
+              "max": 1
             },
             {
               "id": 8,
@@ -201,7 +212,9 @@
                   "legendFormat": "{{node}} gpu{{gpu}} · peer"
                 }
               ],
-              "unit": "percentunit"
+              "unit": "percentunit",
+              "min": 0,
+              "max": 1
             }
           ]
         },
@@ -213,7 +226,7 @@
               "id": 9,
               "type": "bargauge",
               "title": "Memory Used vs Total",
-              "description": "Memory in use, against the memory installed on the card. Normalized to the MIG instance, not the card: never sum these into a device total. DCGM reports framebuffer in MiB.",
+              "description": "Memory in use, against the memory installed on the card. DCGM reports framebuffer in MiB.",
               "gridPos": {
                 "h": 8,
                 "w": 8,
@@ -234,7 +247,7 @@
               "id": 10,
               "type": "timeseries",
               "title": "Memory Used Over Time",
-              "description": "Memory in use. Normalized to the MIG instance, not the card: never sum these into a device total. DCGM reports framebuffer in MiB.",
+              "description": "Memory in use. DCGM reports framebuffer in MiB.",
               "gridPos": {
                 "h": 8,
                 "w": 16,
@@ -253,7 +266,7 @@
               "id": 11,
               "type": "timeseries",
               "title": "Memory Held by Each Pod",
-              "description": "Memory in use per process, summed per pod. Normalized to the MIG instance, not the card: never sum these into a device total.",
+              "description": "Memory in use per process, summed per pod.",
               "gridPos": {
                 "h": 8,
                 "w": 12,
@@ -272,7 +285,7 @@
               "id": 12,
               "type": "timeseries",
               "title": "Memory Bandwidth Utilization",
-              "description": "Percent of cycles the device memory interface is active. Normalized to the MIG instance, not the card: never sum these into a device total.",
+              "description": "Percent of cycles the device memory interface is active.",
               "gridPos": {
                 "h": 8,
                 "w": 12,
@@ -285,7 +298,9 @@
                   "legendFormat": "{{node}} gpu{{gpu}}"
                 }
               ],
-              "unit": "percentunit"
+              "unit": "percentunit",
+              "min": 0,
+              "max": 1
             }
           ]
         },
@@ -375,7 +390,7 @@
               "description": "Power usage of the device in watts.",
               "gridPos": {
                 "h": 8,
-                "w": 6,
+                "w": 12,
                 "x": 0,
                 "y": 0
               },
@@ -396,8 +411,8 @@
               "description": "Current GPU device temperature in Celsius.",
               "gridPos": {
                 "h": 8,
-                "w": 6,
-                "x": 6,
+                "w": 12,
+                "x": 12,
                 "y": 0
               },
               "targets": [
@@ -521,7 +536,7 @@
               "id": 21,
               "type": "table",
               "title": "Metric Support Matrix",
-              "description": "Whether an entity can produce a metric: 1 supported, 0 not supported, absent when unknown. Normalized to the MIG instance, not the card: never sum these into a device total.",
+              "description": "Whether an entity can produce a metric: 1 supported, 0 not supported, absent when unknown.",
               "gridPos": {
                 "h": 14,
                 "w": 24,
@@ -580,7 +595,7 @@
     {
       "uid": "gpu-hardware-mig",
       "title": "GPU Hardware — MIG",
-      "description": "Per-instance view of a MIG-partitioned card: every panel here reports one GPU instance, not the whole physical device. Field definitions are shared with GPU Hardware — Device (the scope is the only difference between them). Utilization here is normalized to the instance, not the card, so a saturated instance can read close to 1.0 while the rest of the physical card sits idle — instance values must never be summed into a device-level figure. A MIG series carries gpu_uuid for the parent card, mig_uuid for the instance, and GPU_I_ID, which is the only identifier DCGM publishes for an instance.",
+      "description": "Per-instance view of a MIG-partitioned card: every panel here reports one GPU instance, not the whole physical device.",
       "variables": [
         {
           "name": "gpu",
@@ -604,7 +619,7 @@
               "id": 1,
               "type": "gauge",
               "title": "GPU Utilization",
-              "description": "Percent of time the MIG instance was actively processing. Normalized to the MIG instance, not the card: never sum these into a device total.",
+              "description": "Percent of time the MIG instance was actively processing.",
               "gridPos": {
                 "h": 8,
                 "w": 6,
@@ -625,7 +640,7 @@
               "id": 2,
               "type": "timeseries",
               "title": "SM Efficiency",
-              "description": "Percent of cycles where an SM had at least one warp resident. Normalized to the MIG instance, not the card: never sum these into a device total.",
+              "description": "Percent of cycles where an SM had at least one warp resident.",
               "gridPos": {
                 "h": 8,
                 "w": 9,
@@ -638,13 +653,15 @@
                   "legendFormat": "{{node}} gpu{{gpu}} · {{GPU_I_PROFILE}}"
                 }
               ],
-              "unit": "percentunit"
+              "unit": "percentunit",
+              "min": 0,
+              "max": 1
             },
             {
               "id": 3,
               "type": "timeseries",
               "title": "SM Occupancy",
-              "description": "Percent of number of warps resident on an SM. Normalized to the MIG instance, not the card: never sum these into a device total.",
+              "description": "Percent of number of warps resident on an SM.",
               "gridPos": {
                 "h": 8,
                 "w": 9,
@@ -657,13 +674,15 @@
                   "legendFormat": "{{node}} gpu{{gpu}} · {{GPU_I_PROFILE}}"
                 }
               ],
-              "unit": "percentunit"
+              "unit": "percentunit",
+              "min": 0,
+              "max": 1
             },
             {
               "id": 4,
               "type": "timeseries",
               "title": "Tensor Core Utilization",
-              "description": "Percent of cycles when any tensor pipe was active, and per pipe: HMMA, IMMA, DFMA. Some of these are not implemented on every GPU; an absent series means unsupported, not idle — see the Metric Support Matrix. Normalized to the MIG instance, not the card: never sum these into a device total.",
+              "description": "Percent of cycles when any tensor pipe was active, and per pipe: HMMA, IMMA, DFMA. Some of these are not implemented on every GPU; an absent series means unsupported, not idle — see the Metric Support Matrix.",
               "gridPos": {
                 "h": 8,
                 "w": 12,
@@ -688,13 +707,15 @@
                   "legendFormat": "{{node}} gpu{{gpu}} · {{GPU_I_PROFILE}} · DFMA"
                 }
               ],
-              "unit": "percentunit"
+              "unit": "percentunit",
+              "min": 0,
+              "max": 1
             },
             {
               "id": 5,
               "type": "timeseries",
               "title": "FP & Integer Utilization",
-              "description": "Percent of cycles when the FP64, FP32, FP16 and integer pipes were active. Some of these are not implemented on every GPU; an absent series means unsupported, not idle — see the Metric Support Matrix. Normalized to the MIG instance, not the card: never sum these into a device total.",
+              "description": "Percent of cycles when the FP64, FP32, FP16 and integer pipes were active. Some of these are not implemented on every GPU; an absent series means unsupported, not idle — see the Metric Support Matrix.",
               "gridPos": {
                 "h": 8,
                 "w": 12,
@@ -719,7 +740,9 @@
                   "legendFormat": "{{node}} gpu{{gpu}} · {{GPU_I_PROFILE}} · integer"
                 }
               ],
-              "unit": "percentunit"
+              "unit": "percentunit",
+              "min": 0,
+              "max": 1
             }
           ]
         },
@@ -790,7 +813,7 @@
               "id": 9,
               "type": "timeseries",
               "title": "Memory Bandwidth Utilization",
-              "description": "Percent of cycles the device memory interface is active. Normalized to the MIG instance, not the card: never sum these into a device total.",
+              "description": "Percent of cycles the device memory interface is active.",
               "gridPos": {
                 "h": 8,
                 "w": 12,
@@ -803,7 +826,9 @@
                   "legendFormat": "{{node}} gpu{{gpu}} · {{GPU_I_PROFILE}}"
                 }
               ],
-              "unit": "percentunit"
+              "unit": "percentunit",
+              "min": 0,
+              "max": 1
             }
           ]
         },
@@ -815,7 +840,7 @@
               "id": 13,
               "type": "table",
               "title": "Metric Support Matrix",
-              "description": "Whether an entity can produce a metric: 1 supported, 0 not supported, absent when unknown. Normalized to the MIG instance, not the card: never sum these into a device total.",
+              "description": "Whether an entity can produce a metric: 1 supported, 0 not supported, absent when unknown.",
               "gridPos": {
                 "h": 14,
                 "w": 24,
@@ -873,7 +898,7 @@
     {
       "uid": "gpu-software",
       "title": "GPU Software — eBPF",
-      "description": "What each pod asks CUDA to do, and where it waits — entirely eBPF-sourced (kernel launches, memory operations, synchronization, HAMi interception). Complements GPU Hardware: this dashboard never says what the silicon did, only what the workload asked it to do. Rows follow the metric catalog's groups (Overview → Compute Activity → Memory Activity → Errors → HAMi Enforcement → Synchronization Latency → Kernel Launch Dimensions). Panels are built for every eBPF metric family, including those no workload here has exercised yet; each such panel says so rather than rendering an unexplained blank.",
+      "description": "What each pod asks CUDA to do, and where it waits — entirely eBPF-sourced (kernel launches, memory operations, synchronization, HAMi interception).",
       "variables": [
         {
           "name": "pod",
@@ -897,7 +922,7 @@
               "id": 2,
               "type": "stat",
               "title": "Total CUDA Kernel Launches",
-              "description": "Total kernels launched by the selected pods and GPUs across the current time window. The single clearest liveness signal this dashboard has",
+              "description": "Total kernels launched by the selected pods and GPUs across the current time window.",
               "gridPos": {
                 "h": 9,
                 "w": 8,
@@ -916,7 +941,7 @@
               "id": 3,
               "type": "stat",
               "title": "Total CUDA Errors",
-              "description": "Total failed CUDA driver calls (non-zero return code) in the window, across every probed function. Not yet observed on this cluster",
+              "description": "Total failed CUDA driver calls (non-zero return code) in the window, across every probed function.",
               "gridPos": {
                 "h": 9,
                 "w": 8,
@@ -935,7 +960,7 @@
               "id": 4,
               "type": "stat",
               "title": "Total HAMi OOM Events",
-              "description": "Total allocations HAMi's interception library refused because a pod exceeded its memory quota. Not yet observed on this cluster: no traced workload has hit a HAMi memory limit, consistent with the compute-throttle signal (Errors row) also never firing here. A strong signal to raise the memory quota the moment it appears.",
+              "description": "Total allocations HAMi's interception library refused because a pod exceeded its memory quota.",
               "gridPos": {
                 "h": 9,
                 "w": 8,
@@ -998,7 +1023,7 @@
               "id": 7,
               "type": "heatmap",
               "title": "Host-Side CUDA Kernel Launch Latency Distribution",
-              "description": "Full distribution of how long the HOST waited inside the launch call, across the selected pods. A P95/P99 line (right) can hide a bimodal stall",
+              "description": "Full distribution of how long the HOST waited inside the launch call, across the selected pods.",
               "gridPos": {
                 "h": 9,
                 "w": 12,
@@ -1080,7 +1105,7 @@
               "id": 10,
               "type": "timeseries",
               "title": "GPU Memory Allocation Rate",
-              "description": "Bytes/second successfully allocated on the GPU (device, managed, pinned-host and stream-ordered allocators). Not yet observed on this cluster. PyTorch's caching allocator takes a few large allocations at warm-up and then reuses that arena, so steady-state training produces almost no cudaMalloc calls. Once populated, steady growth without matching frees (right) indicates a memory leak.",
+              "description": "Bytes/second successfully allocated on the GPU (device, managed, pinned-host and stream-ordered allocators).",
               "gridPos": {
                 "h": 9,
                 "w": 12,
@@ -1099,7 +1124,7 @@
               "id": 11,
               "type": "timeseries",
               "title": "GPU Memory Allocation Call Rate",
-              "description": "Allocation calls per second, independent of size. Not yet observed on this cluster, for the same caching-allocator reason as the byte rate to the left. Once populated, many small calls in a row (high call rate, low average size) indicates fragmentation risk rather than a caching allocator reusing its pool.",
+              "description": "Allocation calls per second, independent of size.",
               "gridPos": {
                 "h": 9,
                 "w": 12,
@@ -1112,13 +1137,13 @@
                   "legendFormat": "{{k8s_namespace_name}}/{{k8s_pod_name}} [{{gpu_uuid}}]"
                 }
               ],
-              "unit": "ops"
+              "unit": "allocations/s"
             },
             {
               "id": 12,
               "type": "timeseries",
               "title": "Average Memory Allocation Size",
-              "description": "Bytes per allocation call, averaged over the rate window. Not yet observed on this cluster",
+              "description": "Bytes per allocation call, averaged over the rate window.",
               "gridPos": {
                 "h": 9,
                 "w": 12,
@@ -1137,7 +1162,7 @@
               "id": 13,
               "type": "timeseries",
               "title": "GPU Memory Free Rate",
-              "description": "Bytes/second of GPU memory freed, including host-pinned unregister. Not yet observed on this cluster",
+              "description": "Bytes/second of GPU memory freed, including host-pinned unregister.",
               "gridPos": {
                 "h": 9,
                 "w": 12,
@@ -1156,7 +1181,7 @@
               "id": 14,
               "type": "timeseries",
               "title": "GPU Memory Free Call Rate",
-              "description": "Free calls per second. Not yet observed on this cluster, same reason as Free Rate above. Once populated, pair with Allocation Call Rate: a large persistent imbalance indicates a leak or over-eager release.",
+              "description": "Free calls per second.",
               "gridPos": {
                 "h": 9,
                 "w": 12,
@@ -1169,7 +1194,7 @@
                   "legendFormat": "{{k8s_namespace_name}}/{{k8s_pod_name}} [{{gpu_uuid}}]"
                 }
               ],
-              "unit": "ops"
+              "unit": "frees/s"
             },
             {
               "id": 15,
@@ -1225,7 +1250,7 @@
               "id": 17,
               "type": "timeseries",
               "title": "P2P Peer Copy Traffic",
-              "description": "Direct GPU-to-GPU transfer bytes/second over NVLink/PCIe, bypassing the host. Not yet observed on this cluster: every validated workload (gpu-burn, resnet50/shufflenet_v2) ran on a single shared card, so there was no peer traffic to trace. Non-zero once populated only for workloads that copy directly between devices",
+              "description": "Direct GPU-to-GPU transfer bytes/second over NVLink/PCIe, bypassing the host.",
               "gridPos": {
                 "h": 9,
                 "w": 12,
@@ -1250,10 +1275,10 @@
               "id": 18,
               "type": "timeseries",
               "title": "CUDA Errors per Interval",
-              "description": "New CUDA errors per interval, broken down by which function failed and its return code (e.g. 2 = out of memory, 1 = invalid argument, 400 = invalid handle). Not yet observed on this cluster",
+              "description": "New CUDA errors per interval, broken down by which function failed and its return code (e.g. 2 = out of memory, 1 = invalid argument, 400 = invalid handle).",
               "gridPos": {
                 "h": 9,
-                "w": 12,
+                "w": 24,
                 "x": 0,
                 "y": 0
               },
@@ -1278,8 +1303,8 @@
               "description": "New HAMi quota-denied allocations per interval, by function and memory kind. Not yet observed on this cluster",
               "gridPos": {
                 "h": 9,
-                "w": 12,
-                "x": 12,
+                "w": 24,
+                "x": 0,
                 "y": 0
               },
               "targets": [
@@ -1317,7 +1342,7 @@
               "id": 21,
               "type": "table",
               "title": "HAMi OOM Events — Detail Table",
-              "description": "All HAMi OOM tuples in the selected time range, even for pods that have already exited",
+              "description": "All HAMi OOM tuples in the selected time range",
               "gridPos": {
                 "h": 10,
                 "w": 24,
@@ -1488,7 +1513,7 @@
               "id": 27,
               "type": "timeseries",
               "title": "Kernel Block Size P95/P99",
-              "description": "Distribution of block size (blockX × blockY × blockZ = threads per block) requested per kernel launch. With Grid Size, this explains an SM occupancy figure on the GPU Hardware dashboard",
+              "description": "Distribution of block size (blockX × blockY × blockZ = threads per block) requested per kernel launch.",
               "gridPos": {
                 "h": 9,
                 "w": 12,

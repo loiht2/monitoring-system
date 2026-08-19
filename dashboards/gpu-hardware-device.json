@@ -1,7 +1,7 @@
 {
   "uid": "gpu-hardware-device",
   "title": "GPU Hardware — Device",
-  "description": "What a whole physical card is doing, who holds it, and whether it is healthy. DCGM is the source for device readings; NVML is retained for exactly three panels DCGM cannot supply (GPU Utilization per Pod, Memory Held by Each Pod, Clocks Throttle Reasons). Every DCGM panel filters to the whole-device entity (GPU_I_ID=\"\") and every retained nvml_* panel filters to the whole-device reading (mig_uuid=\"\"), so a MIG-partitioned card's instance-scoped reading is never double-counted into a device total; see GPU Hardware — MIG for the per-instance view.",
+  "description": "What a whole physical card is doing, who holds it, and whether it is healthy. DCGM is the source for device readings; NVML is retained for exactly three panels DCGM cannot supply (GPU Utilization per Pod, Memory Held by Each Pod, Clocks Throttle Reasons).",
   "tags": [
     "gpu",
     "hardware",
@@ -136,7 +136,8 @@
           "unit": "percentunit",
           "custom": {
             "fillOpacity": 8
-          }
+          },
+          "min": 0
         },
         "overrides": []
       },
@@ -167,7 +168,9 @@
           "unit": "percentunit",
           "custom": {
             "fillOpacity": 8
-          }
+          },
+          "min": 0,
+          "max": 1
         },
         "overrides": []
       },
@@ -182,7 +185,7 @@
       "id": 4,
       "type": "timeseries",
       "title": "SM Occupancy",
-      "description": "Percent of number of warps resident on an SM. Normalized to the MIG instance, not the card: never sum these into a device total.",
+      "description": "Percent of number of warps resident on an SM.",
       "gridPos": {
         "h": 8,
         "w": 8,
@@ -198,7 +201,9 @@
           "unit": "percentunit",
           "custom": {
             "fillOpacity": 8
-          }
+          },
+          "min": 0,
+          "max": 1
         },
         "overrides": []
       },
@@ -213,7 +218,7 @@
       "id": 5,
       "type": "timeseries",
       "title": "Tensor Core Utilization",
-      "description": "Percent of cycles when any tensor pipe was active, and per pipe: HMMA, IMMA, DFMA. Some of these are not implemented on every GPU; an absent series means unsupported, not idle — see the Metric Support Matrix. Normalized to the MIG instance, not the card: never sum these into a device total.",
+      "description": "Percent of cycles when any tensor pipe was active, and per pipe: HMMA, IMMA, DFMA. Some of these are not implemented on every GPU; an absent series means unsupported, not idle — see the Metric Support Matrix.",
       "gridPos": {
         "h": 8,
         "w": 8,
@@ -229,7 +234,9 @@
           "unit": "percentunit",
           "custom": {
             "fillOpacity": 8
-          }
+          },
+          "min": 0,
+          "max": 1
         },
         "overrides": []
       },
@@ -256,7 +263,7 @@
       "id": 6,
       "type": "timeseries",
       "title": "FP & Integer Utilization",
-      "description": "Percent of cycles when the FP64, FP32, FP16 and integer pipes were active. Some of these are not implemented on every GPU; an absent series means unsupported, not idle — see the Metric Support Matrix. Normalized to the MIG instance, not the card: never sum these into a device total.",
+      "description": "Percent of cycles when the FP64, FP32, FP16 and integer pipes were active. Some of these are not implemented on every GPU; an absent series means unsupported, not idle — see the Metric Support Matrix.",
       "gridPos": {
         "h": 8,
         "w": 8,
@@ -272,7 +279,9 @@
           "unit": "percentunit",
           "custom": {
             "fillOpacity": 8
-          }
+          },
+          "min": 0,
+          "max": 1
         },
         "overrides": []
       },
@@ -315,7 +324,9 @@
           "unit": "percentunit",
           "custom": {
             "fillOpacity": 8
-          }
+          },
+          "min": 0,
+          "max": 1
         },
         "overrides": []
       },
@@ -350,7 +361,9 @@
           "unit": "percentunit",
           "custom": {
             "fillOpacity": 8
-          }
+          },
+          "min": 0,
+          "max": 1
         },
         "overrides": []
       },
@@ -374,14 +387,14 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 1
+        "y": 25
       },
       "panels": [
         {
           "id": 9,
           "type": "bargauge",
           "title": "Memory Used vs Total",
-          "description": "Memory in use, against the memory installed on the card. Normalized to the MIG instance, not the card: never sum these into a device total. DCGM reports framebuffer in MiB.",
+          "description": "Memory in use, against the memory installed on the card. DCGM reports framebuffer in MiB.",
           "gridPos": {
             "h": 8,
             "w": 8,
@@ -441,7 +454,7 @@
           "id": 10,
           "type": "timeseries",
           "title": "Memory Used Over Time",
-          "description": "Memory in use. Normalized to the MIG instance, not the card: never sum these into a device total. DCGM reports framebuffer in MiB.",
+          "description": "Memory in use. DCGM reports framebuffer in MiB.",
           "gridPos": {
             "h": 8,
             "w": 16,
@@ -472,7 +485,7 @@
           "id": 11,
           "type": "timeseries",
           "title": "Memory Held by Each Pod",
-          "description": "Memory in use per process, summed per pod. Normalized to the MIG instance, not the card: never sum these into a device total.",
+          "description": "Memory in use per process, summed per pod.",
           "gridPos": {
             "h": 8,
             "w": 12,
@@ -503,7 +516,7 @@
           "id": 12,
           "type": "timeseries",
           "title": "Memory Bandwidth Utilization",
-          "description": "Percent of cycles the device memory interface is active. Normalized to the MIG instance, not the card: never sum these into a device total.",
+          "description": "Percent of cycles the device memory interface is active.",
           "gridPos": {
             "h": 8,
             "w": 12,
@@ -519,7 +532,9 @@
               "unit": "percentunit",
               "custom": {
                 "fillOpacity": 8
-              }
+              },
+              "min": 0,
+              "max": 1
             },
             "overrides": []
           },
@@ -541,7 +556,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 2
+        "y": 26
       },
       "panels": [
         {
@@ -660,7 +675,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 3
+        "y": 27
       },
       "panels": [
         {
@@ -670,7 +685,7 @@
           "description": "Power usage of the device in watts.",
           "gridPos": {
             "h": 8,
-            "w": 6,
+            "w": 12,
             "x": 0,
             "y": 0
           },
@@ -730,8 +745,8 @@
           "description": "Current GPU device temperature in Celsius.",
           "gridPos": {
             "h": 8,
-            "w": 6,
-            "x": 6,
+            "w": 12,
+            "x": 12,
             "y": 0
           },
           "datasource": {
@@ -794,7 +809,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 4
+        "y": 28
       },
       "panels": [
         {
@@ -898,7 +913,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 5
+        "y": 29
       },
       "panels": [
         {
@@ -950,7 +965,7 @@
           "id": 21,
           "type": "table",
           "title": "Metric Support Matrix",
-          "description": "Whether an entity can produce a metric: 1 supported, 0 not supported, absent when unknown. Normalized to the MIG instance, not the card: never sum these into a device total.",
+          "description": "Whether an entity can produce a metric: 1 supported, 0 not supported, absent when unknown.",
           "gridPos": {
             "h": 14,
             "w": 24,

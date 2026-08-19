@@ -1,7 +1,7 @@
 {
   "uid": "gpu-software",
   "title": "GPU Software — eBPF",
-  "description": "What each pod asks CUDA to do, and where it waits — entirely eBPF-sourced (kernel launches, memory operations, synchronization, HAMi interception). Complements GPU Hardware: this dashboard never says what the silicon did, only what the workload asked it to do. Rows follow the metric catalog's groups (Overview → Compute Activity → Memory Activity → Errors → HAMi Enforcement → Synchronization Latency → Kernel Launch Dimensions). Panels are built for every eBPF metric family, including those no workload here has exercised yet; each such panel says so rather than rendering an unexplained blank.",
+  "description": "What each pod asks CUDA to do, and where it waits — entirely eBPF-sourced (kernel launches, memory operations, synchronization, HAMi interception).",
   "tags": [
     "gpu",
     "ebpf"
@@ -83,7 +83,7 @@
       "id": 2,
       "type": "stat",
       "title": "Total CUDA Kernel Launches",
-      "description": "Total kernels launched by the selected pods and GPUs across the current time window. The single clearest liveness signal this dashboard has",
+      "description": "Total kernels launched by the selected pods and GPUs across the current time window.",
       "gridPos": {
         "h": 9,
         "w": 8,
@@ -134,7 +134,7 @@
       "id": 3,
       "type": "stat",
       "title": "Total CUDA Errors",
-      "description": "Total failed CUDA driver calls (non-zero return code) in the window, across every probed function. Not yet observed on this cluster",
+      "description": "Total failed CUDA driver calls (non-zero return code) in the window, across every probed function.",
       "gridPos": {
         "h": 9,
         "w": 8,
@@ -189,7 +189,7 @@
       "id": 4,
       "type": "stat",
       "title": "Total HAMi OOM Events",
-      "description": "Total allocations HAMi's interception library refused because a pod exceeded its memory quota. Not yet observed on this cluster: no traced workload has hit a HAMi memory limit, consistent with the compute-throttle signal (Errors row) also never firing here. A strong signal to raise the memory quota the moment it appears.",
+      "description": "Total allocations HAMi's interception library refused because a pod exceeded its memory quota.",
       "gridPos": {
         "h": 9,
         "w": 8,
@@ -249,7 +249,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 1
+        "y": 10
       },
       "panels": [
         {
@@ -272,6 +272,15 @@
               "unit": "ops",
               "custom": {
                 "fillOpacity": 8
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
               }
             },
             "overrides": []
@@ -281,7 +290,14 @@
               "expr": "sum by (k8s_namespace_name, k8s_pod_name, k8s_pod_uid, gpu_uuid) (rate(ebpf_cuda_kernel_launch_calls_total{k8s_pod_name=~\"$pod\",gpu_uuid=~\"$gpu\"}[$__rate_interval]))",
               "legendFormat": "{{k8s_namespace_name}}/{{k8s_pod_name}} [{{gpu_uuid}}]"
             }
-          ]
+          ],
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          }
         },
         {
           "id": 6,
@@ -303,6 +319,15 @@
               "unit": "ops",
               "custom": {
                 "fillOpacity": 8
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
               }
             },
             "overrides": []
@@ -312,13 +337,20 @@
               "expr": "sum by (k8s_namespace_name, k8s_pod_name, k8s_pod_uid, gpu_uuid) (rate(ebpf_cuda_graph_launch_calls_total{k8s_pod_name=~\"$pod\",gpu_uuid=~\"$gpu\"}[$__rate_interval]))",
               "legendFormat": "{{k8s_namespace_name}}/{{k8s_pod_name}} [{{gpu_uuid}}]"
             }
-          ]
+          ],
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          }
         },
         {
           "id": 7,
           "type": "heatmap",
           "title": "Host-Side CUDA Kernel Launch Latency Distribution",
-          "description": "Full distribution of how long the HOST waited inside the launch call, across the selected pods. A P95/P99 line (right) can hide a bimodal stall",
+          "description": "Full distribution of how long the HOST waited inside the launch call, across the selected pods.",
           "gridPos": {
             "h": 9,
             "w": 12,
@@ -335,6 +367,15 @@
                 "scaleDistribution": {
                   "type": "linear"
                 }
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
               }
             },
             "overrides": []
@@ -389,6 +430,15 @@
               "unit": "s",
               "custom": {
                 "fillOpacity": 8
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
               }
             },
             "overrides": []
@@ -402,7 +452,14 @@
               "expr": "histogram_quantile(0.99, sum by (k8s_namespace_name, k8s_pod_name, k8s_pod_uid, gpu_uuid, le) (rate(ebpf_cuda_kernel_launch_duration_seconds_bucket{k8s_pod_name=~\"$pod\",gpu_uuid=~\"$gpu\"}[$__rate_interval])))",
               "legendFormat": "P99 | {{k8s_namespace_name}}/{{k8s_pod_name}} [{{gpu_uuid}}]"
             }
-          ]
+          ],
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          }
         },
         {
           "id": 9,
@@ -420,7 +477,17 @@
             "uid": "gpu-prometheus"
           },
           "fieldConfig": {
-            "defaults": {},
+            "defaults": {
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
             "overrides": []
           },
           "targets": [
@@ -469,14 +536,14 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 2
+        "y": 11
       },
       "panels": [
         {
           "id": 10,
           "type": "timeseries",
           "title": "GPU Memory Allocation Rate",
-          "description": "Bytes/second successfully allocated on the GPU (device, managed, pinned-host and stream-ordered allocators). Not yet observed on this cluster. PyTorch's caching allocator takes a few large allocations at warm-up and then reuses that arena, so steady-state training produces almost no cudaMalloc calls. Once populated, steady growth without matching frees (right) indicates a memory leak.",
+          "description": "Bytes/second successfully allocated on the GPU (device, managed, pinned-host and stream-ordered allocators).",
           "gridPos": {
             "h": 9,
             "w": 12,
@@ -492,6 +559,15 @@
               "unit": "Bps",
               "custom": {
                 "fillOpacity": 8
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
               }
             },
             "overrides": []
@@ -501,13 +577,20 @@
               "expr": "sum by (k8s_namespace_name, k8s_pod_name, k8s_pod_uid, gpu_uuid) (rate(ebpf_cuda_memory_allocations_bytes_total{k8s_pod_name=~\"$pod\",gpu_uuid=~\"$gpu\"}[$__rate_interval]))",
               "legendFormat": "{{k8s_namespace_name}}/{{k8s_pod_name}} [{{gpu_uuid}}]"
             }
-          ]
+          ],
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          }
         },
         {
           "id": 11,
           "type": "timeseries",
           "title": "GPU Memory Allocation Call Rate",
-          "description": "Allocation calls per second, independent of size. Not yet observed on this cluster, for the same caching-allocator reason as the byte rate to the left. Once populated, many small calls in a row (high call rate, low average size) indicates fragmentation risk rather than a caching allocator reusing its pool.",
+          "description": "Allocation calls per second, independent of size.",
           "gridPos": {
             "h": 9,
             "w": 12,
@@ -520,9 +603,18 @@
           },
           "fieldConfig": {
             "defaults": {
-              "unit": "ops",
+              "unit": "allocations/s",
               "custom": {
                 "fillOpacity": 8
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
               }
             },
             "overrides": []
@@ -532,13 +624,20 @@
               "expr": "sum by (k8s_namespace_name, k8s_pod_name, k8s_pod_uid, gpu_uuid) (rate(ebpf_cuda_memory_allocations_calls_total{k8s_pod_name=~\"$pod\",gpu_uuid=~\"$gpu\"}[$__rate_interval]))",
               "legendFormat": "{{k8s_namespace_name}}/{{k8s_pod_name}} [{{gpu_uuid}}]"
             }
-          ]
+          ],
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          }
         },
         {
           "id": 12,
           "type": "timeseries",
           "title": "Average Memory Allocation Size",
-          "description": "Bytes per allocation call, averaged over the rate window. Not yet observed on this cluster",
+          "description": "Bytes per allocation call, averaged over the rate window.",
           "gridPos": {
             "h": 9,
             "w": 12,
@@ -554,6 +653,15 @@
               "unit": "bytes",
               "custom": {
                 "fillOpacity": 8
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
               }
             },
             "overrides": []
@@ -563,13 +671,20 @@
               "expr": "sum by (k8s_namespace_name, k8s_pod_name, k8s_pod_uid, gpu_uuid) (rate(ebpf_cuda_memory_allocations_bytes_total{k8s_pod_name=~\"$pod\",gpu_uuid=~\"$gpu\"}[$__rate_interval])) / clamp_min(sum by (k8s_namespace_name, k8s_pod_name, k8s_pod_uid, gpu_uuid) (rate(ebpf_cuda_memory_allocations_calls_total{k8s_pod_name=~\"$pod\",gpu_uuid=~\"$gpu\"}[$__rate_interval])), 1)",
               "legendFormat": "{{k8s_namespace_name}}/{{k8s_pod_name}} [{{gpu_uuid}}]"
             }
-          ]
+          ],
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          }
         },
         {
           "id": 13,
           "type": "timeseries",
           "title": "GPU Memory Free Rate",
-          "description": "Bytes/second of GPU memory freed, including host-pinned unregister. Not yet observed on this cluster",
+          "description": "Bytes/second of GPU memory freed, including host-pinned unregister.",
           "gridPos": {
             "h": 9,
             "w": 12,
@@ -585,6 +700,15 @@
               "unit": "Bps",
               "custom": {
                 "fillOpacity": 8
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
               }
             },
             "overrides": []
@@ -594,13 +718,20 @@
               "expr": "sum by (k8s_namespace_name, k8s_pod_name, k8s_pod_uid, gpu_uuid) (rate(ebpf_cuda_memory_frees_bytes_total{k8s_pod_name=~\"$pod\",gpu_uuid=~\"$gpu\"}[$__rate_interval]))",
               "legendFormat": "{{k8s_namespace_name}}/{{k8s_pod_name}} [{{gpu_uuid}}]"
             }
-          ]
+          ],
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          }
         },
         {
           "id": 14,
           "type": "timeseries",
           "title": "GPU Memory Free Call Rate",
-          "description": "Free calls per second. Not yet observed on this cluster, same reason as Free Rate above. Once populated, pair with Allocation Call Rate: a large persistent imbalance indicates a leak or over-eager release.",
+          "description": "Free calls per second.",
           "gridPos": {
             "h": 9,
             "w": 12,
@@ -613,9 +744,18 @@
           },
           "fieldConfig": {
             "defaults": {
-              "unit": "ops",
+              "unit": "frees/s",
               "custom": {
                 "fillOpacity": 8
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
               }
             },
             "overrides": []
@@ -625,7 +765,14 @@
               "expr": "sum by (k8s_namespace_name, k8s_pod_name, k8s_pod_uid, gpu_uuid) (rate(ebpf_cuda_memory_frees_calls_total{k8s_pod_name=~\"$pod\",gpu_uuid=~\"$gpu\"}[$__rate_interval]))",
               "legendFormat": "{{k8s_namespace_name}}/{{k8s_pod_name}} [{{gpu_uuid}}]"
             }
-          ]
+          ],
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          }
         },
         {
           "id": 15,
@@ -647,6 +794,15 @@
               "unit": "Bps",
               "custom": {
                 "fillOpacity": 8
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
               }
             },
             "overrides": []
@@ -664,7 +820,14 @@
               "expr": "sum by (k8s_namespace_name, k8s_pod_name, gpu_uuid, cuda_memcpy_kind) (rate(ebpf_cuda_memory_copies_bytes_total_sum{k8s_pod_name=~\"$pod\",gpu_uuid=~\"$gpu\",cuda_memcpy_kind=~\"MemcpyDeviceToDevice\"}[$__rate_interval]))",
               "legendFormat": "Device→Device | {{k8s_namespace_name}}/{{k8s_pod_name}} [{{gpu_uuid}}]"
             }
-          ]
+          ],
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          }
         },
         {
           "id": 16,
@@ -686,6 +849,15 @@
               "unit": "Bps",
               "custom": {
                 "fillOpacity": 8
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
               }
             },
             "overrides": []
@@ -699,13 +871,20 @@
               "expr": "sum by (k8s_namespace_name, k8s_pod_name, gpu_uuid) (rate(ebpf_cuda_memory_memset_bytes_total_sum{k8s_pod_name=~\"$pod\",gpu_uuid=~\"$gpu\",cuda_memset_async=\"true\"}[$__rate_interval]))",
               "legendFormat": "async | {{k8s_namespace_name}}/{{k8s_pod_name}} [{{gpu_uuid}}]"
             }
-          ]
+          ],
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          }
         },
         {
           "id": 17,
           "type": "timeseries",
           "title": "P2P Peer Copy Traffic",
-          "description": "Direct GPU-to-GPU transfer bytes/second over NVLink/PCIe, bypassing the host. Not yet observed on this cluster: every validated workload (gpu-burn, resnet50/shufflenet_v2) ran on a single shared card, so there was no peer traffic to trace. Non-zero once populated only for workloads that copy directly between devices",
+          "description": "Direct GPU-to-GPU transfer bytes/second over NVLink/PCIe, bypassing the host.",
           "gridPos": {
             "h": 9,
             "w": 12,
@@ -721,6 +900,15 @@
               "unit": "Bps",
               "custom": {
                 "fillOpacity": 8
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
               }
             },
             "overrides": []
@@ -730,7 +918,14 @@
               "expr": "sum by (k8s_namespace_name, k8s_pod_name, gpu_uuid) (rate(ebpf_cuda_memory_peer_copies_bytes_total_sum{k8s_pod_name=~\"$pod\",gpu_uuid=~\"$gpu\"}[$__rate_interval]))",
               "legendFormat": "{{k8s_namespace_name}}/{{k8s_pod_name}} [{{gpu_uuid}}]"
             }
-          ]
+          ],
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          }
         }
       ]
     },
@@ -743,17 +938,17 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 3
+        "y": 12
       },
       "panels": [
         {
           "id": 18,
           "type": "timeseries",
           "title": "CUDA Errors per Interval",
-          "description": "New CUDA errors per interval, broken down by which function failed and its return code (e.g. 2 = out of memory, 1 = invalid argument, 400 = invalid handle). Not yet observed on this cluster",
+          "description": "New CUDA errors per interval, broken down by which function failed and its return code (e.g. 2 = out of memory, 1 = invalid argument, 400 = invalid handle).",
           "gridPos": {
             "h": 9,
-            "w": 12,
+            "w": 24,
             "x": 0,
             "y": 0
           },
@@ -765,7 +960,23 @@
             "defaults": {
               "unit": "short",
               "custom": {
-                "fillOpacity": 8
+                "fillOpacity": 8,
+                "thresholdsStyle": {
+                  "mode": "line"
+                }
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 1
+                  }
+                ]
               }
             },
             "overrides": []
@@ -775,7 +986,14 @@
               "expr": "sum by (k8s_namespace_name, k8s_pod_name, k8s_pod_uid, gpu_uuid, cuda_function, cuda_error_code) (increase(ebpf_cuda_errors_total{k8s_pod_name=~\"$pod\",gpu_uuid=~\"$gpu\"}[$__rate_interval]))",
               "legendFormat": "{{k8s_namespace_name}}/{{k8s_pod_name}} [{{gpu_uuid}}] | {{cuda_function}} | rc={{cuda_error_code}}"
             }
-          ]
+          ],
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          }
         }
       ]
     },
@@ -788,7 +1006,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 4
+        "y": 13
       },
       "panels": [
         {
@@ -798,8 +1016,8 @@
           "description": "New HAMi quota-denied allocations per interval, by function and memory kind. Not yet observed on this cluster",
           "gridPos": {
             "h": 9,
-            "w": 12,
-            "x": 12,
+            "w": 24,
+            "x": 0,
             "y": 0
           },
           "datasource": {
@@ -810,7 +1028,23 @@
             "defaults": {
               "unit": "short",
               "custom": {
-                "fillOpacity": 8
+                "fillOpacity": 8,
+                "thresholdsStyle": {
+                  "mode": "line"
+                }
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 1
+                  }
+                ]
               }
             },
             "overrides": []
@@ -820,7 +1054,14 @@
               "expr": "sum by (k8s_namespace_name, k8s_pod_name, k8s_pod_uid, gpu_uuid, cuda_function, hami_oom_mem_kind, hami_oom_error_code) (increase(ebpf_hami_oom_events_total{k8s_pod_name=~\"$pod\",gpu_uuid=~\"$gpu\"}[$__rate_interval]))",
               "legendFormat": "{{k8s_namespace_name}}/{{k8s_pod_name}} [{{gpu_uuid}}] | {{cuda_function}} | {{hami_oom_mem_kind}} | rc={{hami_oom_error_code}}"
             }
-          ]
+          ],
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          }
         },
         {
           "id": 20,
@@ -842,6 +1083,15 @@
               "unit": "s",
               "custom": {
                 "fillOpacity": 8
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
               }
             },
             "overrides": []
@@ -855,13 +1105,20 @@
               "expr": "histogram_quantile(0.99, sum by (k8s_namespace_name, k8s_pod_name, k8s_pod_uid, gpu_uuid, le) (rate(ebpf_hami_compute_throttle_duration_seconds_bucket{k8s_pod_name=~\"$pod\",gpu_uuid=~\"$gpu\"}[$__rate_interval])))",
               "legendFormat": "P99 | {{k8s_namespace_name}}/{{k8s_pod_name}} [{{gpu_uuid}}]"
             }
-          ]
+          ],
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          }
         },
         {
           "id": 21,
           "type": "table",
           "title": "HAMi OOM Events — Detail Table",
-          "description": "All HAMi OOM tuples in the selected time range, even for pods that have already exited",
+          "description": "All HAMi OOM tuples in the selected time range",
           "gridPos": {
             "h": 10,
             "w": 24,
@@ -873,7 +1130,21 @@
             "uid": "gpu-prometheus"
           },
           "fieldConfig": {
-            "defaults": {},
+            "defaults": {
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 1
+                  }
+                ]
+              }
+            },
             "overrides": []
           },
           "targets": [
@@ -931,7 +1202,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 5
+        "y": 14
       },
       "panels": [
         {
@@ -954,6 +1225,15 @@
               "unit": "s",
               "custom": {
                 "fillOpacity": 8
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
               }
             },
             "overrides": []
@@ -967,7 +1247,14 @@
               "expr": "histogram_quantile(0.99, sum by (k8s_namespace_name, k8s_pod_name, k8s_pod_uid, gpu_uuid, le) (rate(ebpf_cuda_stream_sync_duration_seconds_bucket{k8s_pod_name=~\"$pod\",gpu_uuid=~\"$gpu\"}[$__rate_interval])))",
               "legendFormat": "P99 | {{k8s_namespace_name}}/{{k8s_pod_name}} [{{gpu_uuid}}]"
             }
-          ]
+          ],
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          }
         },
         {
           "id": 23,
@@ -989,6 +1276,15 @@
               "unit": "s",
               "custom": {
                 "fillOpacity": 8
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
               }
             },
             "overrides": []
@@ -1002,7 +1298,14 @@
               "expr": "histogram_quantile(0.99, sum by (k8s_namespace_name, k8s_pod_name, k8s_pod_uid, gpu_uuid, le) (rate(ebpf_cuda_device_sync_duration_seconds_bucket{k8s_pod_name=~\"$pod\",gpu_uuid=~\"$gpu\"}[$__rate_interval])))",
               "legendFormat": "P99 | {{k8s_namespace_name}}/{{k8s_pod_name}} [{{gpu_uuid}}]"
             }
-          ]
+          ],
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          }
         },
         {
           "id": 24,
@@ -1024,6 +1327,15 @@
               "unit": "s",
               "custom": {
                 "fillOpacity": 8
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
               }
             },
             "overrides": []
@@ -1037,7 +1349,14 @@
               "expr": "histogram_quantile(0.99, sum by (k8s_namespace_name, k8s_pod_name, k8s_pod_uid, gpu_uuid, le) (rate(ebpf_cuda_event_sync_duration_seconds_bucket{k8s_pod_name=~\"$pod\",gpu_uuid=~\"$gpu\"}[$__rate_interval])))",
               "legendFormat": "P99 | {{k8s_namespace_name}}/{{k8s_pod_name}} [{{gpu_uuid}}]"
             }
-          ]
+          ],
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          }
         },
         {
           "id": 25,
@@ -1059,6 +1378,15 @@
               "unit": "s",
               "custom": {
                 "fillOpacity": 8
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
               }
             },
             "overrides": []
@@ -1072,7 +1400,14 @@
               "expr": "histogram_quantile(0.99, sum by (k8s_namespace_name, k8s_pod_name, k8s_pod_uid, gpu_uuid, le) (rate(ebpf_cuda_event_elapsed_seconds_bucket{k8s_pod_name=~\"$pod\",gpu_uuid=~\"$gpu\"}[$__rate_interval])))",
               "legendFormat": "P99 | {{k8s_namespace_name}}/{{k8s_pod_name}} [{{gpu_uuid}}]"
             }
-          ]
+          ],
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          }
         }
       ]
     },
@@ -1085,7 +1420,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 6
+        "y": 15
       },
       "panels": [
         {
@@ -1108,6 +1443,15 @@
               "unit": "short",
               "custom": {
                 "fillOpacity": 8
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
               }
             },
             "overrides": []
@@ -1121,13 +1465,20 @@
               "expr": "histogram_quantile(0.99, sum by (k8s_namespace_name, k8s_pod_name, k8s_pod_uid, gpu_uuid, le) (rate(ebpf_cuda_kernel_grid_size_total_bucket{k8s_pod_name=~\"$pod\",gpu_uuid=~\"$gpu\"}[$__rate_interval])))",
               "legendFormat": "P99 | {{k8s_namespace_name}}/{{k8s_pod_name}} [{{gpu_uuid}}]"
             }
-          ]
+          ],
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          }
         },
         {
           "id": 27,
           "type": "timeseries",
           "title": "Kernel Block Size P95/P99",
-          "description": "Distribution of block size (blockX × blockY × blockZ = threads per block) requested per kernel launch. With Grid Size, this explains an SM occupancy figure on the GPU Hardware dashboard",
+          "description": "Distribution of block size (blockX × blockY × blockZ = threads per block) requested per kernel launch.",
           "gridPos": {
             "h": 9,
             "w": 12,
@@ -1143,6 +1494,15 @@
               "unit": "short",
               "custom": {
                 "fillOpacity": 8
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
               }
             },
             "overrides": []
@@ -1156,7 +1516,14 @@
               "expr": "histogram_quantile(0.99, sum by (k8s_namespace_name, k8s_pod_name, k8s_pod_uid, gpu_uuid, le) (rate(ebpf_cuda_kernel_block_size_total_bucket{k8s_pod_name=~\"$pod\",gpu_uuid=~\"$gpu\"}[$__rate_interval])))",
               "legendFormat": "P99 | {{k8s_namespace_name}}/{{k8s_pod_name}} [{{gpu_uuid}}]"
             }
-          ]
+          ],
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          }
         },
         {
           "id": 28,
@@ -1178,6 +1545,15 @@
               "unit": "bytes",
               "custom": {
                 "fillOpacity": 8
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
               }
             },
             "overrides": []
@@ -1191,7 +1567,14 @@
               "expr": "histogram_quantile(0.99, sum by (k8s_namespace_name, k8s_pod_name, k8s_pod_uid, gpu_uuid, le) (rate(ebpf_cuda_kernel_shared_memory_bytes_bucket{k8s_pod_name=~\"$pod\",gpu_uuid=~\"$gpu\"}[$__rate_interval])))",
               "legendFormat": "P99 | {{k8s_namespace_name}}/{{k8s_pod_name}} [{{gpu_uuid}}]"
             }
-          ]
+          ],
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            }
+          }
         }
       ]
     }
