@@ -5,9 +5,12 @@ Day-to-day operation: where to look, how to read what you find, and how to tell 
 
 ---
 
-## 1. The two surfaces
+## 1. The surfaces
 
 Both read the same Prometheus, so they cannot disagree about a number.
+
+There is also a third, for scripting rather than reading: the API both surfaces sit on — see
+[09 — The API](09-api.md).
 
 | | Advanced monitoring UI | Grafana |
 |---|---|---|

@@ -64,6 +64,7 @@ UUIDs). The specification proper is written to be hardware- and site-agnostic.
 | [Troubleshooting](docs/06-troubleshooting.md) | Failures that look healthy |
 | [Installation](docs/07-installation.md) | **Start-to-finish install on a new cluster**, with a check after every step |
 | [Usage](docs/08-usage.md) | Day-to-day operation: the surfaces, the controls, reading an empty panel |
+| [API](docs/09-api.md) | The read-only Prometheus proxy and panel spec, for scripting or another frontend |
 
 **[specs/](specs/)** — the normative specification. What the system must do and why it was built this way:
 the source-authority contract, architecture, metric catalogue, per-exporter detail, the dashboard and UI
