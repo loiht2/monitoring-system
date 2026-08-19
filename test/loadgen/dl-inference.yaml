@@ -45,7 +45,12 @@ spec:
                 expression: device.attributes["hami-core-gpu.project-hami.io"].uuid == "GPU-26e02ca7-f4ba-b335-915c-2a8541deb8a4"
           capacity:
             requests:
-              cores: "50"
+              # 30, not 50: dl-training.yaml's whole-GPU claim targets this
+              # same physical GPU (there's only one non-MIG card on this
+              # node) at 65% cores, and the DRA capacity slice caps at 100%
+              # total. 30 is also HAMi's documented core-share minimum, which
+              # is fine here — inference is the lighter of the two workloads.
+              cores: "30"
               memory: 4000Mi
 ---
 apiVersion: v1
