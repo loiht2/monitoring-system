@@ -69,10 +69,14 @@ export function GaugePanel({ spec, vars, start, end, tick, supported,
                     justifyContent: 'center', gap: '0.5rem', height: '100%' }}>
         {gauges.map((g) => {
           const frac = max > min ? (g.value - min) / (max - min) : 0;
+          // Sized down only once there's a second gauge to share the panel with — a
+          // lone gauge (still the common case: one physical GPU, or $migid narrowed
+          // to one instance) keeps the same size it always has.
+          const solo = gauges.length === 1;
           return (
             <div key={g.key} style={{ display: 'flex', flexDirection: 'column',
                                        alignItems: 'center', flex: '1 1 0', minWidth: 90 }}>
-              <svg viewBox="0 0 120 76" style={{ width: '100%', maxWidth: 150 }}>
+              <svg viewBox="0 0 120 76" style={{ width: '100%', maxWidth: solo ? 210 : 150 }}>
                 <path d={arc(60, 62, 48, 1)} fill="none" stroke={SURFACE.border}
                       strokeWidth={12} strokeLinecap="round" />
                 <path d={arc(60, 62, 48, frac)} fill="none" stroke={g.color}
@@ -84,8 +88,8 @@ export function GaugePanel({ spec, vars, start, end, tick, supported,
                   {formatValue(max, spec.unit)}
                 </text>
               </svg>
-              <div style={{ fontSize: '1.4rem', fontWeight: 700, color: INK.primary,
-                            marginTop: '-1.1rem' }}>
+              <div style={{ fontSize: solo ? '1.8rem' : '1.4rem', fontWeight: 700,
+                            color: INK.primary, marginTop: '-1.1rem' }}>
                 {formatValue(g.value, spec.unit)}
               </div>
               {/* Only shown once a second gauge exists — a lone gauge already reads
