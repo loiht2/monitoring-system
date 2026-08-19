@@ -66,7 +66,12 @@ spec:
     spec:
       containers:
         - name: ui
-          image: ghcr.io/loiht2/advanced-monitoring-ui:v1.0.1
+          image: ghcr.io/loiht2/advanced-monitoring-ui:v1.0.0
+          # The release tag is rebuilt in place rather than bumped for every UI fix, so
+          # it is mutable in practice and the node's cache must not be trusted. Without
+          # this, `IfNotPresent` (the default for a non-`latest` tag) silently reuses the
+          # stale layer and a rebuilt image never reaches the cluster.
+          imagePullPolicy: Always
           ports: [{ name: http, containerPort: 3002 }]
           env:
             # Read by THIS POD, not by the browser: where Next forwards /api/* to. It is
