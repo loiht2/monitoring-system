@@ -7,7 +7,7 @@ import { extractMetricNames } from '@/lib/support';
 import { unsupportedTargets, emptyState } from '@/lib/panelSupport';
 import { stateForError } from '@/lib/panelState';
 import { formatValue } from '@/lib/format';
-import { assignColors, seriesKey, seriesLabel } from '@/lib/series';
+import { assignColors, seriesKey, seriesLabel, targetSeriesKey } from '@/lib/series';
 import { isHidden, toggle, isolate } from '@/lib/visibility';
 import { INK, SURFACE } from '@/lib/theme';
 import { Legend } from '../Legend';
@@ -54,12 +54,13 @@ export function TimeSeriesPanel({ spec, vars, start, end, tick, supported,
 
       // Collect the series before colouring: the allocator needs the whole set, and
       // colour must never depend on the position a series landed at in this array.
-      const rawSeries: { metric: Record<string, string>; label: string; points: any[] }[] = [];
+      const rawSeries: { metric: Record<string, string>; targetIndex: number; label: string; points: any[] }[] = [];
       results.forEach((r, ti) => {
         if (r.status !== 'fulfilled') return;
         r.value.result.forEach((s: any) => {
           rawSeries.push({
             metric: s.metric,
+            targetIndex: ti,
             label: seriesLabel(spec.targets[ti].legendFormat, s.metric),
             points: s.values.map(([t, v]: [number, string]) => ({ x: t * 1000, y: Number(v) })),
           });
@@ -67,25 +68,36 @@ export function TimeSeriesPanel({ spec, vars, start, end, tick, supported,
       });
       if (!rawSeries.length) { setState(emptyState({ deviceScope, selected: vars.gpu, partitioned, allUnsupported })); return; }
 
-      colorMap.current = assignColors(rawSeries.map((s) => s.metric), colorMap.current);
-      const colorOf = (m: Record<string, string>) => colorMap.current[seriesKey(m)];
+      // Keyed per target, not just per label set: a P95 and P99 histogram_quantile()
+      // over the same histogram return identically labelled results (the quantile is a
+      // query-time constant, never a label), so seriesKey() alone would collapse both
+      // onto one colour slot and one visibility-toggle key. targetSeriesKey() is the
+      // one place that identity is computed; assignColors() still wants label-record
+      // objects, so it's called on trivial single-field wrappers around that same key
+      // rather than reintroducing a second, parallel way to tell series apart.
+      const keyOf = (s: { targetIndex: number; metric: Record<string, string> }) =>
+        targetSeriesKey(s.targetIndex, s.metric);
+
+      colorMap.current = assignColors(rawSeries.map((s) => ({ key: keyOf(s) })), colorMap.current);
+      const colorOf = (s: { targetIndex: number; metric: Record<string, string> }) =>
+        colorMap.current[seriesKey({ key: keyOf(s) })];
 
       // Only a lone series carries a fill; several translucent fills muddy the plot.
       const single = rawSeries.length === 1;
       const datasets = rawSeries.map((s) => {
-        const color = colorOf(s.metric);
+        const color = colorOf(s);
         return {
           label: s.label,
           // Toggling rides on the dataset, so a refresh keeps what the reader hid. The
           // key travels with it so a legend row addresses its own series, not an index.
-          seriesKey: seriesKey(s.metric),
-          hidden: isHidden(hiddenRef.current, seriesKey(s.metric)),
+          seriesKey: keyOf(s),
+          hidden: isHidden(hiddenRef.current, keyOf(s)),
           data: s.points,
           borderColor: color,
           borderWidth: 2,
           pointRadius: 0,
           pointHoverRadius: 5,      // ≥8px hit target at 2× device pixel ratio
-          tension: 0.25,
+          tension: 0,               // straight segments, matching Grafana's default
           fill: single ? { target: 'origin' } : false,
           backgroundColor: single ? `${color}1a` : undefined,   // 0.10 alpha
         };
@@ -95,7 +107,7 @@ export function TimeSeriesPanel({ spec, vars, start, end, tick, supported,
       // same legend text, and a row must address exactly the series it toggles.
       const byKey = new Map<string, { key: string; label: string; color: string }>();
       rawSeries.forEach((s, i) => {
-        const key = seriesKey(s.metric);
+        const key = keyOf(s);
         if (!byKey.has(key)) byKey.set(key, { key, label: s.label, color: datasets[i].borderColor });
       });
       setLegend([...byKey.values()]);
