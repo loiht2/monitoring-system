@@ -41,6 +41,32 @@ def check(paths):
                 if (ga["x"] < gb["x"] + gb["w"] and gb["x"] < ga["x"] + ga["w"]
                         and ga["y"] < gb["y"] + gb["h"] and gb["y"] < ga["y"] + ga["h"]):
                     fail.append(f"{path}: '{a['title']}' overlaps '{b['title']}'")
+        # (i) row headers must clear the content above them. Check (d) cannot catch this:
+        # it compares panels with each other and filters rows out. An EXPANDED row's panels
+        # are top-level siblings with absolute y, so a following header left at y=1 ties
+        # with them; Grafana sorts by y, packs the header in among the panels, and displaces
+        # the rest of the row below it. The panels look like they vanished.
+        cursor, prev_row_y = 0, None
+        for p in d["panels"]:
+            g = p.get("gridPos", {})
+            y, h = g.get("y", 0), g.get("h", 0)
+            if p.get("type") == "row":
+                if prev_row_y is not None and y <= prev_row_y:
+                    fail.append(f"{path}: row '{p['title']}' y={y} is not below the "
+                                f"previous row (y={prev_row_y})")
+                if y < cursor:
+                    fail.append(f"{path}: row header '{p['title']}' y={y} collides with the "
+                                f"content above it, which ends at y={cursor}")
+                prev_row_y = y
+            cursor = max(cursor, y + h)
+
+        # (j) nothing may extend past Grafana's 24-column grid
+        for p in ls:
+            g = p["gridPos"]
+            if g["x"] + g["w"] > 24:
+                fail.append(f"{path}: '{p['title']}' spans x={g['x']}..{g['x'] + g['w']}, "
+                            f"past the 24-column grid")
+
         # (c) collect shared descriptions, keyed by title AND the metrics behind it.
         # Two panels may share a title while querying different fields -- MIG's
         # "GPU Utilization" is GR_ENGINE_ACTIVE, the device's is NVML's utilization
