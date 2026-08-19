@@ -29,6 +29,10 @@ spec:
       containers:
         - name: api
           image: ghcr.io/loiht2/advanced-monitoring-api:v1.0.0
+          # Same reason as the UI below: the release tag is rebuilt in place, and this
+          # image *bakes in* panels.json, so a dashboard edit reaches Grafana immediately
+          # but never reaches this API while the node serves a cached layer.
+          imagePullPolicy: Always
           ports: [{ name: http, containerPort: 8000 }]
           env:
             - name: PROMETHEUS_URL
