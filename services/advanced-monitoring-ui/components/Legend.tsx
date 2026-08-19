@@ -10,20 +10,27 @@ import { isHidden } from '@/lib/visibility';
  *  Every series is listed and the list scrolls — height is a layout problem, so it is
  *  capped by the container rather than by deleting names. Clicking a row toggles that
  *  series, alt/⌘-click isolates it. §9, §9.1. */
-export function Legend({ items, unsupported = [], hidden = new Set<string>(), onToggle }: {
+export function Legend({ items, unsupported = [], hidden = new Set<string>(), onToggle,
+                         maxHeight = '7.5rem' }: {
   items: { key: string; label: string; color: string }[];
   unsupported?: string[];
   hidden?: Set<string>;
   onToggle?: (key: string, isolate: boolean) => void;
+  /** Cap on the whole legend, which scrolls past it. A percentage is resolved against
+   *  the flex container the legend sits in, so it only means anything when that
+   *  container has a definite height — which is why the cap lives on this element (a
+   *  direct flex item of the panel body) rather than on the inner row list, whose
+   *  parent is auto-height and would make a percentage meaningless. */
+  maxHeight?: string;
 }) {
   // One series is named by the panel title — but a named absence always needs saying.
   if (items.length < 2 && unsupported.length === 0) return null;
   const rows = legendItems(items);
   const row = { display: 'inline-flex', alignItems: 'center', gap: '0.3rem' } as const;
   return (
-    <div style={{ marginBottom: '0.5rem', fontSize: '0.75rem', color: INK.secondary }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem 0.8rem',
-                    maxHeight: '7.5rem', overflowY: 'auto' }}>
+    <div style={{ marginBottom: '0.5rem', fontSize: '0.75rem', color: INK.secondary,
+                  maxHeight, overflowY: 'auto', flex: '0 1 auto', minHeight: 0 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem 0.8rem' }}>
         {rows.map((s) => {
           const off = isHidden(hidden, s.key!);
           return (

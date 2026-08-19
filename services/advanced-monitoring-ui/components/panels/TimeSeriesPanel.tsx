@@ -8,8 +8,10 @@ import { unsupportedTargets, emptyState } from '@/lib/panelSupport';
 import { stateForError } from '@/lib/panelState';
 import { formatValue } from '@/lib/format';
 import { assignColors, seriesKey, seriesLabel, targetSeriesKey } from '@/lib/series';
+import { pointRadiusFor } from '@/lib/chart';
 import { isHidden, toggle, isolate } from '@/lib/visibility';
-import { INK, SURFACE } from '@/lib/theme';
+import { INK, SURFACE, resolveColor, resolveColorAlpha } from '@/lib/theme';
+import { useTheme } from '../ThemeProvider';
 import { Legend } from '../Legend';
 import { PanelFrame, PanelState } from '../PanelFrame';
 
@@ -30,6 +32,14 @@ export function TimeSeriesPanel({ spec, vars, start, end, tick, supported,
   // re-running — a toggle must update the chart, never re-query.
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const hiddenRef = useRef<Set<string>>(hidden);
+  // Canvas cannot read the cascade, so a theme switch has to re-resolve the
+  // colours and rebuild the datasets — hence a dependency, unlike every DOM panel.
+  const { theme } = useTheme();
+  // The theme the live chart was built under. Axis, grid and tooltip colours are
+  // baked into the chart's options at construction, and the in-place update path
+  // below only touches datasets and scale bounds — so a switch has to rebuild
+  // rather than update, or the plot repaints while its axes stay the old colour.
+  const builtTheme = useRef<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -85,7 +95,9 @@ export function TimeSeriesPanel({ spec, vars, start, end, tick, supported,
       // Only a lone series carries a fill; several translucent fills muddy the plot.
       const single = rawSeries.length === 1;
       const datasets = rawSeries.map((s) => {
-        const color = colorOf(s);
+        // Resolved here, not passed as a token: Chart.js paints the canvas itself and
+        // never consults the cascade, so a `var(--…)` string would draw nothing.
+        const color = resolveColor(colorOf(s));
         return {
           label: s.label,
           // Toggling rides on the dataset, so a refresh keeps what the reader hid. The
@@ -95,11 +107,19 @@ export function TimeSeriesPanel({ spec, vars, start, end, tick, supported,
           data: s.points,
           borderColor: color,
           borderWidth: 2,
-          pointRadius: 0,
+          // Sparse series get visible markers: one point strokes no segment at all, so
+          // a wide window over a short workload rendered as an empty panel. Grafana's
+          // `showPoints: 'auto'` does the same thing.
+          pointRadius: pointRadiusFor(s.points.length),
+          // Markers take the series colour outright. `backgroundColor` doubles as the
+          // area fill, so the lone-series case keeps its 0.10-alpha wash and states the
+          // marker colour separately rather than letting one field mean two things.
+          pointBackgroundColor: color,
+          pointBorderColor: color,
           pointHoverRadius: 5,      // ≥8px hit target at 2× device pixel ratio
           tension: 0,               // straight segments, matching Grafana's default
           fill: single ? { target: 'origin' } : false,
-          backgroundColor: single ? `${color}1a` : undefined,   // 0.10 alpha
+          backgroundColor: single ? resolveColorAlpha(color, '1a') : undefined,   // 0.10 alpha
         };
       });
 
@@ -129,15 +149,25 @@ export function TimeSeriesPanel({ spec, vars, start, end, tick, supported,
       await new Promise<void>((r) =>
         requestAnimationFrame(() => requestAnimationFrame(() => r())));
       if (cancelled) return;
+      if (chart.current && builtTheme.current !== theme) {
+        chart.current.destroy();
+        chart.current = null;
+      }
       if (chart.current) {
         // Update in place. Destroying and recreating flickers the canvas on every refresh.
         // The colours ride on the datasets, so a changed assignment applies without a rebuild.
         chart.current.data.datasets = datasets;
         chart.current.options.scales.y.min = yMin;
+        // The window moves on every refresh and on every range change, so the pinned
+        // x bounds have to move with it — updating only the datasets would leave the
+        // axis showing whatever window the chart was first built with.
+        chart.current.options.scales.x.min = start * 1000;
+        chart.current.options.scales.x.max = end * 1000;
         chart.current.update();
         return;
       }
       if (!canvas.current) return;
+      builtTheme.current = theme;
       chart.current = new Chart(canvas.current, {
         type: 'line',
         data: { datasets },
@@ -146,11 +176,17 @@ export function TimeSeriesPanel({ spec, vars, start, end, tick, supported,
           interaction: { mode: 'index', intersect: false },
           scales: {
             // Vertical gridlines go; the gridline nearest the baseline reads as the axis.
-            x: { type: 'time', grid: { display: false },
-                 ticks: { color: INK.muted, maxTicksLimit: 6, font: { size: 10 } } },
-            y: { grid: { color: SURFACE.grid, drawTicks: false },
+            // Pinned to the selected window, not auto-fitted to the data. Without this
+            // Chart.js zooms the axis to whatever the series happens to span, so a 6h
+            // window over ten minutes of traffic drew a ten-minute-wide chart — the
+            // panel disagreed with the range picker above it and with Grafana, which
+            // always renders the window you asked for.
+            x: { type: 'time', min: start * 1000, max: end * 1000,
+                 grid: { display: false },
+                 ticks: { color: resolveColor(INK.muted), maxTicksLimit: 6, font: { size: 10 } } },
+            y: { grid: { color: resolveColor(SURFACE.grid), drawTicks: false },
                  border: { display: false },
-                 ticks: { color: INK.muted, maxTicksLimit: 5, font: { size: 10 },
+                 ticks: { color: resolveColor(INK.muted), maxTicksLimit: 5, font: { size: 10 },
                           // Ticks read in the panel's own unit, as the stat and gauge do.
                           callback: (value: any) => formatValue(Number(value), spec.unit) },
                  min: yMin, max: spec.max },
@@ -158,8 +194,9 @@ export function TimeSeriesPanel({ spec, vars, start, end, tick, supported,
           plugins: {
             legend: { display: false },          // rendered by <Legend/> outside the canvas
             tooltip: {
-              backgroundColor: SURFACE.raised, borderColor: SURFACE.border, borderWidth: 1,
-              titleColor: INK.secondary, bodyColor: INK.primary, padding: 10,
+              backgroundColor: resolveColor(SURFACE.raised), borderColor: resolveColor(SURFACE.border),
+              borderWidth: 1, titleColor: resolveColor(INK.secondary),
+              bodyColor: resolveColor(INK.primary), padding: 10,
               displayColors: true, boxWidth: 8, boxHeight: 8,
               callbacks: {
                 // Without this Chart.js prints the raw number: a memory panel showed
@@ -173,7 +210,7 @@ export function TimeSeriesPanel({ spec, vars, start, end, tick, supported,
       });
     })();
     return () => { cancelled = true; };
-  }, [spec, vars, start, end, tick, supported, partitioned, deviceScope]);
+  }, [spec, vars, start, end, tick, supported, partitioned, deviceScope, theme]);
 
   useEffect(() => () => { chart.current?.destroy(); }, []);
 
@@ -193,8 +230,11 @@ export function TimeSeriesPanel({ spec, vars, start, end, tick, supported,
   return (
     <PanelFrame title={spec.title} description={spec.description} state={state}>
       <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+        {/* The legend takes at most a third of the panel, so plot:legend is 2:1 however
+            many series there are. Past that the legend scrolls rather than eating the
+            chart — a legend and no chart answers nothing. */}
         <Legend items={legend} unsupported={unsupportedTargets(spec.targets, supported)}
-                hidden={hidden} onToggle={onToggle} />
+                hidden={hidden} onToggle={onToggle} maxHeight="33.333%" />
         {/* minHeight so a long legend can never squeeze the plot to nothing — §9. */}
         <div style={{ flex: 1, minHeight: 80, position: 'relative' }}>
           <canvas ref={canvas} />
